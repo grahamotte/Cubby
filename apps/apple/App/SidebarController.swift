@@ -35,8 +35,10 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     override func loadView() {
         outlineView.controller = self
         outlineView.headerView = nil
-        outlineView.style = .sourceList
-        outlineView.rowSizeStyle = .default
+        outlineView.style = .plain
+        outlineView.backgroundColor = .clear
+        outlineView.rowSizeStyle = .custom
+        outlineView.rowHeight = 28
         outlineView.floatsGroupRows = false
         outlineView.indentationPerLevel = 12
         outlineView.allowsMultipleSelection = false
@@ -66,10 +68,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         buttons.spacing = 4
         buttons.translatesAutoresizingMaskIntoConstraints = false
 
-        let root = NSVisualEffectView()
-        root.material = .sidebar
-        root.blendingMode = .behindWindow
-        root.state = .followsWindowActiveState
+        let root = FillView()
+        root.color = Theme.sidebar
         root.addSubview(scroll)
         root.addSubview(buttons)
         NSLayoutConstraint.activate([
@@ -340,7 +340,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         if node.kind == .folder {
             let exists = node.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
             cell.imageView?.image = NSImage(systemSymbolName: exists ? "folder" : "exclamationmark.triangle", accessibilityDescription: nil)
-            cell.imageView?.contentTintColor = exists ? .controlAccentColor : .systemOrange
+            cell.imageView?.contentTintColor = exists ? .secondaryLabelColor : .systemOrange
             cell.toolTip = node.url?.path
             cell.alphaValue = exists ? 1 : 0.6
         }
@@ -356,8 +356,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         cell.addSubview(label)
         cell.textField = label
         if group {
-            label.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
-            label.textColor = .secondaryLabelColor
+            label.font = .systemFont(ofSize: 12, weight: .medium)
+            label.textColor = .tertiaryLabelColor
             NSLayoutConstraint.activate([
                 label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
                 label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
@@ -379,6 +379,12 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             ])
         }
         return cell
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        let row = RoundedRowView()
+        row.horizontalInset = 8
+        return row
     }
 
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {

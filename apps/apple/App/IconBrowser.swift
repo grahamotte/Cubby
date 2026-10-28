@@ -13,7 +13,7 @@ final class FileTileItem: NSCollectionViewItem {
     override func loadView() {
         view = NSView()
         selectionBackground.wantsLayer = true
-        selectionBackground.layer?.cornerRadius = 6
+        selectionBackground.layer?.cornerRadius = 8
         thumbnail.imageScaling = .scaleProportionallyUpOrDown
         label.alignment = .center
         label.maximumNumberOfLines = 2
@@ -78,11 +78,13 @@ final class FileTileItem: NSCollectionViewItem {
 
     private func updateSelection() {
         let selected = isSelected || highlightState == .forSelection
-        selectionBackground.layer?.backgroundColor = selected ? NSColor.unemphasizedSelectedContentBackgroundColor.cgColor : nil
-        label.textColor = .labelColor
-        if selected, view.window?.firstResponder is NSCollectionView {
-            selectionBackground.layer?.backgroundColor = NSColor.selectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
+        let focused = view.window?.firstResponder is NSCollectionView
+        var color: CGColor?
+        view.effectiveAppearance.performAsCurrentDrawingAppearance {
+            color = selected ? (focused ? Theme.selection : Theme.inactiveSelection).cgColor : nil
         }
+        selectionBackground.layer?.backgroundColor = color
+        label.textColor = .labelColor
     }
 }
 

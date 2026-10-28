@@ -1,7 +1,7 @@
 import AppKit
 
 final class FillView: NSView {
-    var color: NSColor = .controlBackgroundColor {
+    var color: NSColor = Theme.content {
         didSet { needsDisplay = true }
     }
 

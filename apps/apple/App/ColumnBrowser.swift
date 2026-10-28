@@ -204,8 +204,9 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         column.table.addTableColumn(tableColumn)
         column.table.headerView = nil
         column.table.browser = self
-        column.table.rowHeight = 22
-        column.table.style = .fullWidth
+        column.table.rowHeight = 26
+        column.table.style = .plain
+        column.table.backgroundColor = .clear
         column.table.allowsMultipleSelection = true
         column.table.dataSource = self
         column.table.delegate = self
@@ -333,6 +334,10 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         cell.chevron.isHidden = !item.isFolder
         cell.alphaValue = item.isHidden ? 0.5 : 1
         return cell
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        RoundedRowView()
     }
 
     func tableView(_ tableView: NSTableView, typeSelectStringFor tableColumn: NSTableColumn?, row: Int) -> String? {

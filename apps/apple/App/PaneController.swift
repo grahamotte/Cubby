@@ -533,7 +533,7 @@ final class PaneHeader: NSView {
     }
 
     var isActive = false {
-        didSet { needsDisplay = true; label.textColor = isActive ? .labelColor : .secondaryLabelColor }
+        didSet { needsDisplay = true; label.textColor = isActive ? .labelColor : .tertiaryLabelColor }
     }
 
     override var isHidden: Bool {
@@ -543,7 +543,7 @@ final class PaneHeader: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = .systemFont(ofSize: 12, weight: .medium)
         label.lineBreakMode = .byTruncatingMiddle
         addSubview(label)
         NSLayoutConstraint.activate([
@@ -558,9 +558,9 @@ final class PaneHeader: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        (isActive ? NSColor.controlAccentColor.withAlphaComponent(0.18) : NSColor.controlBackgroundColor).setFill()
+        Theme.content.setFill()
         bounds.fill()
-        NSColor.separatorColor.setFill()
+        Theme.divider.setFill()
         NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()
         if isActive {
             NSColor.controlAccentColor.setFill()

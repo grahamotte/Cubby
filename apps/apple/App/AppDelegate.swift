@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
@@ -186,7 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         if !FileManager.default.fileExists(atPath: url.path) {
             AppState.shared.saveConfig()
         }
-        let textEdit = NSWorkspace.shared.urlForApplication(toOpen: url) ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.TextEdit")
+        let textEdit = NSWorkspace.shared.urlForApplication(toOpen: .plainText) ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.TextEdit")
         if let textEdit {
             NSWorkspace.shared.open([url], withApplicationAt: textEdit, configuration: NSWorkspace.OpenConfiguration())
         }
