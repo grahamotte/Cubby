@@ -53,7 +53,7 @@ enum SortKey: String, Codable, CaseIterable {
 }
 
 struct FolderView: Codable, Equatable {
-    static let iconSizes = 32...256
+    static let iconSizes = 32...512
 
     var mode: ViewMode
     var sort: SortKey

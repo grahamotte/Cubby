@@ -4,7 +4,7 @@ import XCTest
 final class FolderViewTests: XCTestCase {
     func testClampsIconSize() {
         XCTAssertEqual(FolderView(mode: .icons, sort: .name, ascending: true, iconSize: 4).iconSize, 32)
-        XCTAssertEqual(FolderView(mode: .icons, sort: .name, ascending: true, iconSize: 999).iconSize, 256)
+        XCTAssertEqual(FolderView(mode: .icons, sort: .name, ascending: true, iconSize: 999).iconSize, 512)
     }
 
     func testDecodesPartialAndUnknownValues() throws {
