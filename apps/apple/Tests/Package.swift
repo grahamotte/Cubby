@@ -55,6 +55,7 @@ let package = Package(
                 "SidebarTree.swift",
                 "ThemeLibrary.swift",
                 "TileLabel.swift",
+                "Visibility.swift",
             ],
             swiftSettings: [.swiftLanguageMode(.v5)],
         ),

@@ -26,10 +26,19 @@ final class FileSorterTests: XCTestCase {
 
     func testFiltersHiddenAndQuery() {
         let items = [item(".git", directory: true, hidden: true), item("Résumé.pdf"), item("notes.md")]
-        XCTAssertEqual(names(FileSorter.filtered(items, showHidden: false, query: "")), ["Résumé.pdf", "notes.md"])
-        XCTAssertEqual(names(FileSorter.filtered(items, showHidden: true, query: "")).count, 3)
-        XCTAssertEqual(names(FileSorter.filtered(items, showHidden: false, query: " resume ")), ["Résumé.pdf"])
-        XCTAssertEqual(names(FileSorter.filtered(items, showHidden: true, query: "GIT")), [".git"])
+        let hidden = Visibility(showHidden: true, showDSStore: false)
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: .standard, query: "")), ["Résumé.pdf", "notes.md"])
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: hidden, query: "")).count, 3)
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: .standard, query: " resume ")), ["Résumé.pdf"])
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: hidden, query: "GIT")), [".git"])
+    }
+
+    func testFiltersDSStoreUnlessShown() {
+        let items = [item(".DS_Store", hidden: true), item(".git", directory: true, hidden: true), item("notes.md")]
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: Visibility(showHidden: true, showDSStore: false), query: "")), [".git", "notes.md"])
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: Visibility(showHidden: true, showDSStore: true), query: "")), [".DS_Store", ".git", "notes.md"])
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: Visibility(showHidden: false, showDSStore: true), query: "")), ["notes.md"])
+        XCTAssertEqual(names(FileSorter.filtered(items, visibility: Visibility(showHidden: true, showDSStore: false), query: "DS")), [])
     }
 
     func testSortsLargeListsQuickly() {

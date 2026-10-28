@@ -5,6 +5,8 @@ final class AppConfigTests: XCTestCase {
     func testStandardHasFavorites() {
         let config = AppConfig.standard
         XCTAssertFalse(config.showHiddenFiles)
+        XCTAssertFalse(config.showDSStoreFiles)
+        XCTAssertEqual(config.visibility, .standard)
         XCTAssertEqual(config.defaultView, .standard)
         XCTAssertEqual(config.terminal, "Terminal")
         XCTAssertEqual(config.appearance, .system)
@@ -18,6 +20,7 @@ final class AppConfigTests: XCTestCase {
     func testDecodesMissingKeysWithDefaults() throws {
         let config = try JSONDecoder().decode(AppConfig.self, from: Data("{}".utf8))
         XCTAssertFalse(config.showHiddenFiles)
+        XCTAssertFalse(config.showDSStoreFiles)
         XCTAssertEqual(config.defaultView, .standard)
         XCTAssertEqual(config.profiles.map(\.name), ["Personal"])
         XCTAssertTrue(config.sidebar.nodes.isEmpty)
@@ -30,6 +33,13 @@ final class AppConfigTests: XCTestCase {
         let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"appearance":"dark","theme":"grove"}"#.utf8))
         XCTAssertEqual(config.appearance, .dark)
         XCTAssertEqual(config.theme, "grove")
+    }
+
+    func testDecodesVisibility() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"showHiddenFiles":true,"showDSStoreFiles":true}"#.utf8))
+        XCTAssertEqual(config.visibility, Visibility(showHidden: true, showDSStore: true))
+        let hiddenOnly = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"showHiddenFiles":true}"#.utf8))
+        XCTAssertEqual(hiddenOnly.visibility, Visibility(showHidden: true, showDSStore: false))
     }
 
     func testRejectsUnknownAppearance() {

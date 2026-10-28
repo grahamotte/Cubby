@@ -16,11 +16,12 @@ final class DirectoryModelTests: XCTestCase {
         makeFile(directory, "b.txt", contents: "12345")
         makeFile(directory, "a.txt", contents: "1")
         makeFile(directory, ".hidden")
-        let model = DirectoryModel(path: directory.path, view: .standard, showHidden: false)
+        makeFile(directory, ".DS_Store")
+        let model = DirectoryModel(path: directory.path, view: .standard, visibility: .standard)
         waitForChange(model) { model.start() }
         XCTAssertTrue(model.isLoaded)
         XCTAssertEqual(names(model.items), ["a.txt", "b.txt"])
-        XCTAssertEqual(model.allItems.count, 3)
+        XCTAssertEqual(model.allItems.count, 4)
 
         model.sort = .size
         model.ascending = false
@@ -32,16 +33,20 @@ final class DirectoryModelTests: XCTestCase {
         XCTAssertEqual(names(model.items), ["a.txt"])
 
         model.query = ""
-        model.showHidden = true
+        model.visibility = Visibility(showHidden: true, showDSStore: false)
         waitForChange(model) { model.applyPresentation() }
-        XCTAssertEqual(model.items.count, 3)
+        XCTAssertEqual(names(model.items), ["b.txt", "a.txt", ".hidden"])
+
+        model.visibility = Visibility(showHidden: true, showDSStore: true)
+        waitForChange(model) { model.applyPresentation() }
+        XCTAssertEqual(model.items.count, 4)
         model.stop()
     }
 
     func testReloadsWhenDirectoryChanges() {
         let directory = makeTemporaryDirectory()
         makeFile(directory, "a.txt")
-        let model = DirectoryModel(path: directory.path, view: .standard, showHidden: false)
+        let model = DirectoryModel(path: directory.path, view: .standard, visibility: .standard)
         waitForChange(model) { model.start() }
         let original = model.items[0]
         waitForChange(model, where: { if case .refreshed = $0 { return true } else { return false } }) {
@@ -56,7 +61,7 @@ final class DirectoryModelTests: XCTestCase {
         let directory = makeTemporaryDirectory()
         let folder = makeFolder(directory, "folder")
         makeFile(folder, "inner.txt")
-        let model = DirectoryModel(path: directory.path, view: .standard, showHidden: false)
+        let model = DirectoryModel(path: directory.path, view: .standard, visibility: .standard)
         waitForChange(model) { model.start() }
         let item = model.items[0]
         waitForChange(model, where: { if case .children = $0 { return true } else { return false } }) {
@@ -72,7 +77,7 @@ final class DirectoryModelTests: XCTestCase {
     }
 
     func testReportsReadErrors() {
-        let model = DirectoryModel(path: "/nonexistent/\(UUID().uuidString)", view: .standard, showHidden: false)
+        let model = DirectoryModel(path: "/nonexistent/\(UUID().uuidString)", view: .standard, visibility: .standard)
         waitForChange(model) { model.start() }
         XCTAssertNotNil(model.error)
         XCTAssertTrue(model.items.isEmpty)

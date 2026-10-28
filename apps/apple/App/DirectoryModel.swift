@@ -15,7 +15,7 @@ final class DirectoryModel {
     private(set) var error: DirectoryReader.ReadError?
     var sort: SortKey
     var ascending: Bool
-    var showHidden: Bool
+    var visibility: Visibility
     var query = ""
     var onChange: ((Change) -> Void)?
 
@@ -28,11 +28,11 @@ final class DirectoryModel {
     private var stopped = false
     private static let queue = DispatchQueue(label: "cubby.directory", qos: .userInitiated, attributes: .concurrent)
 
-    init(path: String, view: FolderView, showHidden: Bool) {
+    init(path: String, view: FolderView, visibility: Visibility) {
         self.path = path
         sort = view.sort
         ascending = view.ascending
-        self.showHidden = showHidden
+        self.visibility = visibility
     }
 
     func start() {
@@ -55,11 +55,11 @@ final class DirectoryModel {
         generation += 1
         let token = generation
         let all = allItems
-        let sort = sort, ascending = ascending, showHidden = showHidden, query = query
+        let sort = sort, ascending = ascending, visibility = visibility, query = query
         let expandedItems = Array(expanded.values)
         Self.queue.async {
-            let visible = FileSorter.sorted(FileSorter.filtered(all, showHidden: showHidden, query: query), by: sort, ascending: ascending)
-            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, showHidden: showHidden, query: ""), by: sort, ascending: ascending) }) }
+            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending)
+            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending) }) }
             DispatchQueue.main.async {
                 guard token == self.generation else { return }
                 for (item, sorted) in children {
@@ -88,11 +88,11 @@ final class DirectoryModel {
     }
 
     private func loadChildren(of item: FileItem) {
-        let sort = sort, ascending = ascending, showHidden = showHidden
+        let sort = sort, ascending = ascending, visibility = visibility
         let path = item.path
         Self.queue.async {
             let read = (try? DirectoryReader.read(path)) ?? []
-            let visible = FileSorter.sorted(FileSorter.filtered(read, showHidden: showHidden, query: ""), by: sort, ascending: ascending)
+            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending)
             DispatchQueue.main.async {
                 guard !self.stopped, self.expanded[path] === item else { return }
                 item.children = DirectoryListing.reconcile(old: item.children ?? [], new: read, visible: visible).visible
@@ -121,7 +121,7 @@ final class DirectoryModel {
     private func load(change: Change) {
         generation += 1
         let token = generation
-        let path = path, sort = sort, ascending = ascending, showHidden = showHidden, query = query
+        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query
         let started = Date()
         Self.queue.async { [weak self] in
             let result: Result<[FileItem], DirectoryReader.ReadError>
@@ -133,7 +133,7 @@ final class DirectoryModel {
             } catch {
                 result = .failure(DirectoryReader.ReadError(path: path, code: EIO))
             }
-            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, showHidden: showHidden, query: query), by: sort, ascending: ascending) } ?? []
+            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending) } ?? []
             DispatchQueue.main.async {
                 guard let self, token == self.generation, !self.stopped else { return }
                 self.lastLoadDuration = Date().timeIntervalSince(started)

@@ -23,11 +23,11 @@ enum FileSorter {
         }
     }
 
-    static func filtered(_ items: [FileItem], showHidden: Bool, query: String) -> [FileItem] {
+    static func filtered(_ items: [FileItem], visibility: Visibility, query: String) -> [FileItem] {
         let needle = query.trimmingCharacters(in: .whitespaces)
-        if showHidden && needle.isEmpty { return items }
+        if visibility.showsEverything && needle.isEmpty { return items }
         return items.filter { item in
-            (showHidden || !item.isHidden) && (needle.isEmpty || item.name.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil)
+            visibility.shows(item) && (needle.isEmpty || item.name.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil)
         }
     }
 
