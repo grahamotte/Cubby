@@ -2,7 +2,7 @@ import AppKit
 
 @MainActor
 protocol SidebarControllerDelegate: AnyObject {
-    func sidebar(_ sidebar: SidebarController, open url: URL, newTab: Bool)
+    func sidebar(_ sidebar: SidebarController, open url: URL, newWindow: Bool)
 }
 
 final class SidebarOutlineView: NSOutlineView {
@@ -166,9 +166,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     @objc private func clicked() {
         guard let node = outlineView.item(atRow: outlineView.clickedRow) as? SidebarNode else { return }
         if node.kind == .folder, let url = node.url {
-            let newTab = NSEvent.modifierFlags.contains(.command)
-            delegate?.sidebar(self, open: url, newTab: newTab)
-            if newTab { updateSelection() }
+            let newWindow = NSEvent.modifierFlags.contains(.command)
+            delegate?.sidebar(self, open: url, newWindow: newWindow)
+            if newWindow { updateSelection() }
         } else {
             if outlineView.isItemExpanded(node) {
                 outlineView.collapseItem(node)
@@ -209,7 +209,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         }
         if let node {
             if node.kind == .folder {
-                add("Open in New Tab", #selector(openInNewTab(_:)), node)
+                add("Open in New Window", #selector(openInNewWindow(_:)), node)
                 add("Show in Finder", #selector(showInFinder(_:)), node)
                 menu.addItem(.separator())
             }
@@ -228,16 +228,16 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(openInNewTab(_:)) || menuItem.action == #selector(showInFinder(_:)) {
+        if menuItem.action == #selector(openInNewWindow(_:)) || menuItem.action == #selector(showInFinder(_:)) {
             guard let node = menuItem.representedObject as? SidebarNode, let url = node.url else { return false }
             return FileManager.default.fileExists(atPath: url.path)
         }
         return true
     }
 
-    @objc private func openInNewTab(_ sender: NSMenuItem) {
+    @objc private func openInNewWindow(_ sender: NSMenuItem) {
         guard let url = (sender.representedObject as? SidebarNode)?.url else { return }
-        delegate?.sidebar(self, open: url, newTab: true)
+        delegate?.sidebar(self, open: url, newWindow: true)
     }
 
     @objc private func showInFinder(_ sender: NSMenuItem) {

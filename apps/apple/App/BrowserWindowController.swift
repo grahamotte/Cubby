@@ -19,8 +19,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
 
     init(tab: SessionState.Tab, sidebarWidth: Double? = nil) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
-        window.tabbingMode = .automatic
-        window.tabbingIdentifier = "CubbyBrowser"
+        window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
@@ -197,7 +196,6 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         let url = pane.directoryURL
         window?.title = url.path == "/" ? "Macintosh HD" : FileManager.default.displayName(atPath: url.path)
         window?.representedURL = url
-        window?.tab.title = window?.title ?? ""
         topBar.path = url.path
         topBar.mode = pane.folderView.mode
         topBar.layout = layout
@@ -233,13 +231,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         updateActive()
     }
 
-    func paneWantsNewTab(_ pane: PaneController, path: String) {
-        AppDelegate.shared?.openTab(path: path, in: self)
+    func paneWantsNewWindow(_ pane: PaneController, path: String) {
+        AppDelegate.shared?.openWindow(path: path)
     }
 
-    func sidebar(_ sidebar: SidebarController, open url: URL, newTab: Bool) {
-        if newTab {
-            AppDelegate.shared?.openTab(path: url.path, in: self)
+    func sidebar(_ sidebar: SidebarController, open url: URL, newWindow: Bool) {
+        if newWindow {
+            AppDelegate.shared?.openWindow(path: url.path)
         } else {
             closeSettings()
             activePane.navigate(to: url.path)
@@ -293,10 +291,6 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         if (sidebarFocused || settings != nil) && BrowserWindowController.selectionActions.contains(action) { return nil }
         if activePane.responds(to: action) { return activePane }
         return super.supplementalTarget(forAction: action, sender: sender)
-    }
-
-    override func newWindowForTab(_ sender: Any?) {
-        AppDelegate.shared?.openTab(path: activePane.path, in: self)
     }
 
     @objc func changeLayout(_ sender: NSMenuItem) {
