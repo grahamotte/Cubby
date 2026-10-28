@@ -51,6 +51,7 @@ let package = Package(
                 "PaneLayout.swift",
                 "PathWatcher.swift",
                 "SessionState.swift",
+                "Shortcuts.swift",
                 "SidebarNode.swift",
                 "SidebarProfile.swift",
                 "SidebarTree.swift",

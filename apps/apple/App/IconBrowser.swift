@@ -324,28 +324,23 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
     }
 
     func handleKey(_ event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        switch event.keyCode {
-        case 36, 76:
-            if flags.isEmpty, selectedItems.count == 1, let item = selectedItems.first {
+        switch KeyCombo(event: event).flatMap({ Shortcuts.action(for: $0, in: .browsing) }) {
+        case .renameItem:
+            if selectedItems.count == 1, let item = selectedItems.first {
                 beginRename(path: item.path)
                 return true
             }
-        case 49:
+        case .previewItem:
             host?.toggleQuickLook()
             return true
-        case 48:
-            if flags.isEmpty {
-                host?.focusNextPane()
-                return true
-            }
-        case 125:
-            if flags.contains(.command) {
-                host?.open(selectedItems)
-                return true
-            }
+        case .nextPane:
+            host?.focusNextPane()
+            return true
+        case .openItem:
+            host?.open(selectedItems)
+            return true
         default:
-            if flags.subtracting(.shift).isEmpty, let characters = event.characters, !characters.isEmpty, characters.unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.union(.punctuationCharacters).union(.symbols).contains($0) || $0 == " " }) {
+            if event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting(.shift).isEmpty, let characters = event.characters, !characters.isEmpty, characters.unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.union(.punctuationCharacters).union(.symbols).contains($0) || $0 == " " }) {
                 typeSelect(characters)
                 return true
             }
