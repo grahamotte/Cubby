@@ -68,8 +68,12 @@ components:
     typography: "{typography.label}"
     height: "{spacing.row}"
   icon-tile-selected:
-    backgroundColor: "{colors.accent}"
+    backgroundColor: "{colors.resting-selection}"
     rounded: "{rounded.tile}"
+  icon-tile-name-selected:
+    backgroundColor: "{colors.accent}"
+    textColor: "#FFFFFF"
+    rounded: "4px"
   icon-button:
     width: "26px"
     height: "24px"
@@ -95,7 +99,7 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 - Flat, tonal surfaces: sidebar darker than content; cards lighter than the page.
 - One accent, used for selection and focus only.
 - Borderless, muted controls (secondary label color, 14 pt symbols).
-- Rounded selection washes (6 pt rows, 8 pt tiles) that merge across adjacent rows.
+- Rounded selection washes (6 pt rows, 10 pt tiles) that merge across adjacent rows.
 - Light and dark are equal citizens; every role has both values.
 
 ## Colors
@@ -103,7 +107,7 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 The default "Workbench" theme is a barely warm paper neutral with the macOS accent color as its only hue.
 
 ### Primary
-- **Accent** (#007AFF, the system accent by default): selection washes at 20% opacity for the focused list, tile, or sidebar row; focus and links ("Open config.json"). The token value is the default blue; at runtime the Workbench theme uses `NSColor.controlAccentColor`, and other themes set their own.
+- **Accent** (#007AFF, the system accent by default): selection washes at 20% opacity for the focused list or sidebar row, the solid pill behind a focused selected tile name; focus and links ("Open config.json"). The token value is the default blue; at runtime the Workbench theme uses `NSColor.controlAccentColor`, and other themes set their own.
 
 ### Neutral
 - **Workbench Content** (#FCFCFB light / #1E1F21 dark): the main pane, top bar, list header, and pane headers. The largest surface; files sit directly on it.
@@ -153,7 +157,7 @@ Flat. There are no shadows, materials, or vibrancy anywhere in the browser. Dept
 
 ## Shapes
 
-Soft, small radii that only appear where something is selectable or grouped: 6 pt for row selection washes, 8 pt for icon tile selection, 10 pt for settings cards. Adjacent selected rows merge into one continuous wash with square inner corners. Nothing else has corners or borders.
+Soft, small radii that only appear where something is selectable or grouped: 6 pt for row selection washes, 10 pt for icon tile selection, 4 pt for a selected tile name, 10 pt for settings cards. Adjacent selected rows merge into one continuous wash with square inner corners. Thumbnails (not icons) get corners scaled to their size (4 to 12 pt) and a hairline border so white pages stay visible. Nothing else has corners or borders.
 
 ## Components
 
@@ -169,8 +173,9 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 - **Sidebar:** monochrome folder symbols in secondary label color; missing folders show an orange warning symbol at 60% opacity. Groups have no disclosure triangle: the name in tertiary label is followed by a small chevron and toggles on click.
 
 ### Icon Tiles
-- **Style:** thumbnail or icon centered above a two-line 12 pt label.
-- **Selected:** 8 pt rounded wash behind the thumbnail using the same accent and resting-selection roles.
+- **Style:** thumbnail or icon centered above a two-line 12 pt label, Finder-style: the name wraps once and a longer remainder truncates in the middle of the second line. Columns stretch so the grid fills the pane evenly. Icon sizes run from 32 to 512 pt.
+- **Selected:** a neutral resting-selection wash (10 pt radius) behind the icon, and a pill behind the name: solid accent with white text while focused, resting selection when not.
+- **Gallery:** the preview fills the pane above a strip of thumbnails up to 96 pt.
 
 ### Navigation
 - **Breadcrumb:** ancestors from home (or Macintosh HD) in secondary label, separated by tertiary "/", the current folder in label color at weight 500. Each part is clickable.

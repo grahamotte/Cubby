@@ -2,40 +2,52 @@ import AppKit
 
 final class FileTileItem: NSCollectionViewItem {
     static let identifier = NSUserInterfaceItemIdentifier("FileTileItem")
+    static let labelHeight: CGFloat = 36
+    static let labelFont = NSFont.systemFont(ofSize: 12)
 
-    private let thumbnail = NSImageView()
+    private let thumbnail = ThumbnailView()
     private let label = NSTextField(wrappingLabelWithString: "")
     private let selectionBackground = NSView()
+    private let labelBackground = NSView()
     private var item: FileItem?
     private var iconSize: CGFloat = 64
+    private var labelWidth: CGFloat = 0
+    private var labelSelected = false
     var showsLabel = true
 
     override func loadView() {
         view = NSView()
         selectionBackground.wantsLayer = true
-        selectionBackground.layer?.cornerRadius = 8
-        thumbnail.imageScaling = .scaleProportionallyUpOrDown
-        label.alignment = .center
+        selectionBackground.layer?.cornerRadius = 10
+        labelBackground.wantsLayer = true
+        labelBackground.layer?.cornerRadius = 4
         label.maximumNumberOfLines = 2
-        label.lineBreakMode = .byTruncatingMiddle
-        label.font = .systemFont(ofSize: 12)
         label.cell?.truncatesLastVisibleLine = true
         view.addSubview(selectionBackground)
         view.addSubview(thumbnail)
+        view.addSubview(labelBackground)
         view.addSubview(label)
-        imageView = thumbnail
         textField = label
     }
 
     override func viewDidLayout() {
         super.viewDidLayout()
         let bounds = view.bounds
-        let labelHeight: CGFloat = showsLabel ? 32 : 0
-        let side = min(iconSize, bounds.width - 8, bounds.height - labelHeight - 8)
-        thumbnail.frame = NSRect(x: (bounds.width - side) / 2, y: labelHeight + (bounds.height - labelHeight - side) / 2, width: side, height: side)
-        selectionBackground.frame = thumbnail.frame.insetBy(dx: -4, dy: -4)
+        let labelHeight = showsLabel ? FileTileItem.labelHeight : 0
+        let side = max(min(iconSize, bounds.width - 16, bounds.height - labelHeight - 16), 0)
+        thumbnail.frame = NSRect(x: ((bounds.width - side) / 2).rounded(), y: (labelHeight + (bounds.height - labelHeight - side) / 2).rounded(), width: side, height: side)
+        selectionBackground.frame = thumbnail.frame.insetBy(dx: -6, dy: -6)
         label.isHidden = !showsLabel
-        label.frame = NSRect(x: 2, y: 0, width: bounds.width - 4, height: labelHeight)
+        guard showsLabel else {
+            labelBackground.isHidden = true
+            return
+        }
+        let width = labelFrame.width
+        if width != labelWidth {
+            labelWidth = width
+            updateLabel()
+        }
+        layoutLabel()
     }
 
     override var isSelected: Bool {
@@ -46,23 +58,32 @@ final class FileTileItem: NSCollectionViewItem {
         didSet { updateSelection() }
     }
 
-    var labelFrame: NSRect { label.frame }
+    var labelFrame: NSRect {
+        NSRect(x: 4, y: 0, width: max(view.bounds.width - 8, 0), height: FileTileItem.labelHeight)
+    }
 
     func configure(_ item: FileItem, iconSize: CGFloat, cut: Bool) {
-        if let previous = self.item, previous !== item {
+        let previous = self.item
+        if let previous, previous !== item {
             ThumbnailCache.shared.cancel(for: previous, size: self.iconSize)
         }
         self.item = item
         self.iconSize = iconSize
-        label.stringValue = item.name
         view.alphaValue = item.isHidden || cut ? 0.5 : 1
-        thumbnail.image = ThumbnailCache.shared.cached(for: item, size: iconSize) ?? IconCache.shared.icon(for: item)
+        if let cached = ThumbnailCache.shared.cached(for: item, size: iconSize) {
+            thumbnail.show(cached)
+        } else if previous !== item || thumbnail.image == nil {
+            thumbnail.show(IconCache.shared.icon(for: item))
+        }
         if ThumbnailCache.wantsThumbnail(item) {
             let scale = view.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-            ThumbnailCache.shared.thumbnail(for: item, size: iconSize, scale: scale) { [weak self] image in
+            ThumbnailCache.shared.thumbnail(for: item, size: iconSize, scale: scale) { [weak self] thumbnail in
                 guard let self, self.item === item else { return }
-                self.thumbnail.image = image
+                self.thumbnail.show(thumbnail)
             }
+        }
+        if previous?.name != item.name {
+            labelWidth = 0
         }
         view.needsLayout = true
         updateSelection()
@@ -74,22 +95,53 @@ final class FileTileItem: NSCollectionViewItem {
             ThumbnailCache.shared.cancel(for: item, size: iconSize)
         }
         item = nil
+        thumbnail.show(nil)
     }
 
-    private func updateSelection() {
+    func updateSelection() {
         let selected = isSelected || highlightState == .forSelection
-        let focused = view.window?.firstResponder is NSCollectionView
-        var color: CGColor?
+        let focused = (collectionView as? FileCollectionView)?.isFocused == true
+        var wash: CGColor?
+        var pill: CGColor?
         view.effectiveAppearance.performAsCurrentDrawingAppearance {
-            color = selected ? (focused ? Theme.selection : Theme.inactiveSelection).cgColor : nil
+            wash = selected ? Theme.inactiveSelection.cgColor : nil
+            pill = selected ? (focused ? Theme.emphasizedSelection : Theme.inactiveSelection).cgColor : nil
         }
-        selectionBackground.layer?.backgroundColor = color
-        label.textColor = .labelColor
+        selectionBackground.layer?.backgroundColor = wash
+        labelBackground.layer?.backgroundColor = pill
+        labelBackground.isHidden = !selected || !showsLabel
+        let emphasized = selected && focused
+        if emphasized != labelSelected {
+            labelSelected = emphasized
+            updateLabel()
+        }
+    }
+
+    private func updateLabel() {
+        guard let item, labelWidth > 0 else { return }
+        let color: NSColor = labelSelected ? .alternateSelectedControlTextColor : .labelColor
+        label.attributedStringValue = TileLabel.text(item.name, width: labelWidth - 10, font: FileTileItem.labelFont, color: color)
+        layoutLabel()
+    }
+
+    private func layoutLabel() {
+        let area = labelFrame
+        guard area.width > 0, let cell = label.cell else { return }
+        let size = cell.cellSize(forBounds: NSRect(x: 0, y: 0, width: area.width, height: area.height))
+        let width = min(size.width.rounded(.up), area.width)
+        let height = min(size.height.rounded(.up), area.height)
+        label.frame = NSRect(x: (area.midX - width / 2).rounded(), y: area.maxY - height, width: width, height: height)
+        labelBackground.frame = label.frame.insetBy(dx: -2, dy: 0)
     }
 }
 
 class FileCollectionView: NSCollectionView {
     weak var browser: TileBrowser?
+    private var hasFocus = false
+
+    var isFocused: Bool {
+        hasFocus && window?.isKeyWindow == true
+    }
 
     override func keyDown(with event: NSEvent) {
         if browser?.handleKey(event) == true { return }
@@ -112,7 +164,34 @@ class FileCollectionView: NSCollectionView {
 
     override func becomeFirstResponder() -> Bool {
         browser?.host?.browserDidBecomeActive()
-        return super.becomeFirstResponder()
+        let became = super.becomeFirstResponder()
+        if became {
+            hasFocus = true
+            browser?.refreshSelection()
+        }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned {
+            hasFocus = false
+            browser?.refreshSelection()
+        }
+        return resigned
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: nil)
+        guard let newWindow else { return }
+        NotificationCenter.default.addObserver(self, selector: #selector(windowKeyChanged(_:)), name: NSWindow.didBecomeKeyNotification, object: newWindow)
+        NotificationCenter.default.addObserver(self, selector: #selector(windowKeyChanged(_:)), name: NSWindow.didResignKeyNotification, object: newWindow)
+    }
+
+    @objc private func windowKeyChanged(_ notification: Notification) {
+        browser?.refreshSelection()
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -132,6 +211,7 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
     private var applyingSelection = false
     private var typeSelectBuffer = ""
     private var typeSelectTime = Date.distantPast
+    private var laidOutWidth: CGFloat = 0
 
     private(set) var items: [FileItem] = []
     var iconSize: CGFloat { CGFloat(host?.folderView.iconSize ?? 80) }
@@ -166,6 +246,20 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
         updateLayout()
     }
 
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let width = scrollView.contentSize.width
+        guard width != laidOutWidth else { return }
+        laidOutWidth = width
+        updateLayout()
+    }
+
+    func refreshSelection() {
+        for case let tile as FileTileItem in collectionView.visibleItems() {
+            tile.updateSelection()
+        }
+    }
+
     var selectedItems: [FileItem] {
         collectionView.selectionIndexPaths.sorted().compactMap { item(at: $0.item) }
     }
@@ -186,8 +280,10 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
     }
 
     func viewDidChange() {
+        let selected = Set(selectedItems.map(\.path))
         updateLayout()
         collectionView.reloadData()
+        select(paths: selected, scroll: false)
     }
 
     func select(paths: Set<String>, scroll: Bool) {
@@ -330,10 +426,13 @@ final class IconBrowser: TileBrowser {
     override func updateLayout() {
         guard let layout = collectionView.collectionViewLayout as? NSCollectionViewFlowLayout else { return }
         let size = iconSize
-        layout.itemSize = NSSize(width: max(size + 28, 96), height: size + 44)
-        layout.minimumInteritemSpacing = 8
-        layout.minimumLineSpacing = 8
-        layout.sectionInset = NSEdgeInsets(top: 8, left: 16, bottom: 16, right: 16)
+        let inset: CGFloat = 16
+        let available = max(scrollView.contentSize.width - inset * 2, 1)
+        let columns = max(Int(available / max(size + 48, 112)), 1)
+        layout.itemSize = NSSize(width: (available / CGFloat(columns)).rounded(.down), height: size + 20 + FileTileItem.labelHeight)
+        layout.minimumInteritemSpacing = 0
+        layout.minimumLineSpacing = 12
+        layout.sectionInset = NSEdgeInsets(top: 12, left: inset, bottom: 16, right: inset)
     }
 
     override func magnify(with event: NSEvent) {

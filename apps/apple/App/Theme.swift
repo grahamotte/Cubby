@@ -12,6 +12,10 @@ enum Theme {
         NSColor.controlAccentColor.withAlphaComponent(0.2)
     }
 
+    static var emphasizedSelection: NSColor {
+        NSColor.controlAccentColor
+    }
+
     private static func dynamic(light: NSColor, dark: NSColor) -> NSColor {
         NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light

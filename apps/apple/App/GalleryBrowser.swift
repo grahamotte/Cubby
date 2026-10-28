@@ -38,12 +38,12 @@ final class GalleryBrowser: TileBrowser {
 
     override func updateLayout() {
         guard let layout = collectionView.collectionViewLayout as? NSCollectionViewFlowLayout else { return }
-        let size = min(iconSize, 160)
+        let size = min(iconSize, 96)
         layout.itemSize = NSSize(width: size + 16, height: size + 16)
         layout.minimumInteritemSpacing = 4
         layout.minimumLineSpacing = 4
-        layout.sectionInset = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
-        stripHeight?.constant = size + 32
+        layout.sectionInset = NSEdgeInsets(top: 8, left: 12, bottom: 12, right: 12)
+        stripHeight?.constant = size + 36
     }
 
     override func configure(_ tile: FileTileItem, _ item: FileItem) {
