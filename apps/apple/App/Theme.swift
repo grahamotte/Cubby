@@ -3,6 +3,7 @@ import AppKit
 enum Theme {
     static let content = dynamic(light: NSColor(srgbRed: 0.988, green: 0.988, blue: 0.984, alpha: 1), dark: NSColor(srgbRed: 0.118, green: 0.122, blue: 0.129, alpha: 1))
     static let sidebar = dynamic(light: NSColor(srgbRed: 0.945, green: 0.945, blue: 0.937, alpha: 1), dark: NSColor(srgbRed: 0.090, green: 0.094, blue: 0.102, alpha: 1))
+    static let card = dynamic(light: .white, dark: NSColor(srgbRed: 0.157, green: 0.161, blue: 0.169, alpha: 1))
     static let divider = dynamic(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.07))
     static let hover = dynamic(light: NSColor(white: 0, alpha: 0.04), dark: NSColor(white: 1, alpha: 0.05))
     static let inactiveSelection = dynamic(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.09))

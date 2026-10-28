@@ -17,6 +17,16 @@ final class SidebarOutlineView: NSOutlineView {
         if controller?.handleKey(event) == true { return }
         super.keyDown(with: event)
     }
+
+    override func frameOfOutlineCell(atRow row: Int) -> NSRect {
+        .zero
+    }
+
+    override func frameOfCell(atColumn column: Int, row: Int) -> NSRect {
+        let frame = super.frameOfCell(atColumn: column, row: row)
+        let x = 18 + CGFloat(level(forRow: row)) * 14
+        return NSRect(x: x, y: frame.minY, width: max(bounds.width - x - 12, 0), height: frame.height)
+    }
 }
 
 final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuItemValidation {
@@ -61,7 +71,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(AppDelegate.openConfigFile(_:)))
+        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
         let add = PlainButton.make("plus", "New Group", target: self, action: #selector(newGroup(_:)))
         let buttons = NSStackView(views: [settings, add])
         buttons.orientation = .horizontal
@@ -77,7 +87,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
-            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 10),
+            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
             buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
         ])
         view = root
@@ -160,6 +170,11 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             delegate?.sidebar(self, open: url, newTab: newTab)
             if newTab { updateSelection() }
         } else {
+            if outlineView.isItemExpanded(node) {
+                outlineView.collapseItem(node)
+            } else {
+                outlineView.expandItem(node)
+            }
             updateSelection()
         }
     }
@@ -317,13 +332,25 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         guard !reloading, let node = notification.userInfo?["NSObject"] as? SidebarNode else { return }
         node.isCollapsed = false
         expandNodes(node.children)
+        updateChevron(node)
         persistCollapse()
     }
 
     func outlineViewItemDidCollapse(_ notification: Notification) {
         guard !reloading, let node = notification.userInfo?["NSObject"] as? SidebarNode else { return }
         node.isCollapsed = true
+        updateChevron(node)
         persistCollapse()
+    }
+
+    private func updateChevron(_ node: SidebarNode) {
+        let row = outlineView.row(forItem: node)
+        guard row >= 0, let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView else { return }
+        cell.imageView?.image = chevron(collapsed: node.isCollapsed)
+    }
+
+    private func chevron(collapsed: Bool) -> NSImage? {
+        NSImage(systemSymbolName: collapsed ? "chevron.right" : "chevron.down", accessibilityDescription: nil)
     }
 
     private func persistCollapse() {
@@ -337,7 +364,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         let id = NSUserInterfaceItemIdentifier(node.kind == .group ? "group" : "folder")
         let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NSTableCellView) ?? makeCell(id, group: node.kind == .group)
         cell.textField?.stringValue = node.displayName
-        if node.kind == .folder {
+        if node.kind == .group {
+            cell.imageView?.image = chevron(collapsed: node.isCollapsed)
+        } else {
             let exists = node.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
             cell.imageView?.image = NSImage(systemSymbolName: exists ? "folder" : "exclamationmark.triangle", accessibilityDescription: nil)
             cell.imageView?.contentTintColor = exists ? .secondaryLabelColor : .systemOrange
@@ -355,25 +384,32 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         label.lineBreakMode = .byTruncatingTail
         cell.addSubview(label)
         cell.textField = label
+        let image = NSImageView()
+        image.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(image)
+        cell.imageView = image
         if group {
             label.font = .systemFont(ofSize: 12, weight: .medium)
             label.textColor = .tertiaryLabelColor
+            image.symbolConfiguration = .init(pointSize: 8, weight: .semibold)
+            image.contentTintColor = .tertiaryLabelColor
+            label.setContentHuggingPriority(.required, for: .horizontal)
             NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+                label.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor, constant: -16),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                image.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 5),
+                image.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+                image.centerYAnchor.constraint(equalTo: cell.centerYAnchor, constant: 1),
             ])
         } else {
-            let image = NSImageView()
-            image.translatesAutoresizingMaskIntoConstraints = false
+            label.font = .systemFont(ofSize: 13)
             image.symbolConfiguration = .init(pointSize: 13, weight: .regular)
-            cell.addSubview(image)
-            cell.imageView = image
             NSLayoutConstraint.activate([
-                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
                 image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
                 image.widthAnchor.constraint(equalToConstant: 18),
-                label.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
+                label.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 7),
                 label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])

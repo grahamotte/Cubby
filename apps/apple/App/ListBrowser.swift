@@ -27,6 +27,21 @@ final class FileOutlineView: NSOutlineView {
         browser?.host?.browserDidBecomeActive()
         super.mouseDown(with: event)
     }
+
+    override func frameOfOutlineCell(atRow row: Int) -> NSRect {
+        var frame = super.frameOfOutlineCell(atRow: row)
+        if !frame.isEmpty { frame.origin.x += 8 }
+        return frame
+    }
+
+    override func frameOfCell(atColumn column: Int, row: Int) -> NSRect {
+        var frame = super.frameOfCell(atColumn: column, row: row)
+        if tableColumns.indices.contains(column), tableColumns[column] === outlineTableColumn {
+            frame.origin.x += 8
+            frame.size.width -= 8
+        }
+        return frame
+    }
 }
 
 final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource, NSOutlineViewDelegate {

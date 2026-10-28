@@ -28,6 +28,7 @@ let package = Package(
                 "MainMenu.swift",
                 "PaneController.swift",
                 "PreviewView.swift",
+                "SettingsController.swift",
                 "SidebarController.swift",
                 "Theme.swift",
                 "TopBar.swift",

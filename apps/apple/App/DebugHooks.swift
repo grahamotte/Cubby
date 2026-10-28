@@ -15,7 +15,8 @@ enum DebugHooks {
         guard let controller = NSApp.orderedWindows.compactMap({ $0.windowController as? BrowserWindowController }).first else { return }
         switch parts[0] {
         case "snap":
-            guard let window = controller.window, let view = window.contentView?.superview else { return }
+            let target = parts.count > 2 ? NSApp.windows.first { $0.title == parts[2] } : controller.window
+            guard let window = target, let view = window.contentView?.superview else { return }
             let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(filePath: parts[1]))
