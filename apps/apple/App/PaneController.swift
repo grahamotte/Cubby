@@ -44,7 +44,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     init(path: String) {
         let view = AppState.shared.view(for: path)
         folderView = view
-        model = DirectoryModel(path: path, view: view, showHidden: AppState.shared.showHiddenFiles)
+        model = DirectoryModel(path: path, view: view, visibility: AppState.shared.visibility)
         super.init(nibName: nil, bundle: nil)
         history.visit(path)
     }
@@ -93,7 +93,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             center.addObserver(forName: .showHiddenChanged, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    self.model.showHidden = AppState.shared.showHiddenFiles
+                    self.model.visibility = AppState.shared.visibility
                     self.model.reload()
                 }
             },
@@ -127,7 +127,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         pendingRename = nil
         model.stop()
         folderView = AppState.shared.view(for: standardized)
-        model = DirectoryModel(path: standardized, view: folderView, showHidden: AppState.shared.showHiddenFiles)
+        model = DirectoryModel(path: standardized, view: folderView, visibility: AppState.shared.visibility)
         model.query = query
         pendingSelection = Set(names.map { (standardized as NSString).appendingPathComponent($0) })
         if browserMode != folderView.mode {

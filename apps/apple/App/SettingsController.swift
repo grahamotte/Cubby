@@ -212,6 +212,8 @@ final class SettingsController: NSViewController {
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
     private var shownThemes: ThemeLibrary?
     private let hiddenSwitch = NSSwitch()
+    private let dsStoreSwitch = NSSwitch()
+    private var dsStoreRow: NSView?
     private let modePopup = SettingsController.popup()
     private let sortPopup = SettingsController.popup()
     private let orderPopup = SettingsController.popup()
@@ -260,6 +262,9 @@ final class SettingsController: NSViewController {
         hiddenSwitch.controlSize = .small
         hiddenSwitch.target = self
         hiddenSwitch.action = #selector(hiddenChanged(_:))
+        dsStoreSwitch.controlSize = .small
+        dsStoreSwitch.target = self
+        dsStoreSwitch.action = #selector(dsStoreChanged(_:))
 
         for popup in [modePopup, sortPopup, orderPopup] {
             popup.target = self
@@ -288,8 +293,11 @@ final class SettingsController: NSViewController {
         let appearanceCard = card([
             row("Color scheme", "Follow the system, or always use light or dark.", schemePopup),
         ])
+        let dsStoreRow = row("Show .DS_Store files", "Show the folder settings files macOS leaves behind.", dsStoreSwitch, indent: 16)
+        self.dsStoreRow = dsStoreRow
         let generalCard = card([
             row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
+            dsStoreRow,
         ])
         let defaultViewCard = card([
             row("View", "How folders you haven't customized are shown.", modePopup),
@@ -485,7 +493,13 @@ final class SettingsController: NSViewController {
         return card
     }
 
-    private func row(_ title: String, _ detail: String, _ control: NSView) -> NSView {
+    private func setRow(_ row: NSView, hidden: Bool) {
+        row.isHidden = hidden
+        guard let stack = row.superview as? NSStackView, let index = stack.arrangedSubviews.firstIndex(of: row), index > 0 else { return }
+        stack.arrangedSubviews[index - 1].isHidden = hidden
+    }
+
+    private func row(_ title: String, _ detail: String, _ control: NSView, indent: CGFloat = 0) -> NSView {
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
         titleLabel.textColor = Theme.text
@@ -508,7 +522,7 @@ final class SettingsController: NSViewController {
         NSLayoutConstraint.activate([
             text.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
             text.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            text.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            text.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16 + indent),
             text.trailingAnchor.constraint(lessThanOrEqualTo: control.leadingAnchor, constant: -16),
             control.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
             control.centerYAnchor.constraint(equalTo: row.centerYAnchor),
@@ -531,6 +545,10 @@ final class SettingsController: NSViewController {
             }
         }
         hiddenSwitch.state = state.showHiddenFiles ? .on : .off
+        dsStoreSwitch.state = state.showDSStoreFiles ? .on : .off
+        if let dsStoreRow {
+            setRow(dsStoreRow, hidden: !state.showHiddenFiles)
+        }
         let view = state.config.defaultView
         modePopup.selectItem(at: ViewMode.allCases.firstIndex(of: view.mode) ?? 0)
         sortPopup.selectItem(at: SortKey.allCases.firstIndex(of: view.sort) ?? 0)
@@ -546,6 +564,10 @@ final class SettingsController: NSViewController {
 
     @objc private func hiddenChanged(_ sender: NSSwitch) {
         AppState.shared.showHiddenFiles = sender.state == .on
+    }
+
+    @objc private func dsStoreChanged(_ sender: NSSwitch) {
+        AppState.shared.showDSStoreFiles = sender.state == .on
     }
 
     @objc private func defaultViewChanged(_ sender: Any?) {

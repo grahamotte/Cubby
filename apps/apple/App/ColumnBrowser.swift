@@ -282,7 +282,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         let selected = selected(in: column)
         if selected.count == 1, let item = selected.first {
             if item.isFolder {
-                let model = DirectoryModel(path: item.path, view: host?.folderView ?? .standard, showHidden: AppState.shared.showHiddenFiles)
+                let model = DirectoryModel(path: item.path, view: host?.folderView ?? .standard, visibility: AppState.shared.visibility)
                 let next = makeColumn(path: item.path, model: model)
                 columns.append(next)
                 addArranged(next.scroll)

@@ -36,7 +36,7 @@ The sidebar holds your folders in groups, and groups can nest. Drag a folder bet
 
 ### Settings
 
-Click the gear at the bottom of the sidebar (⌘,) to choose light, dark, or system appearance, a color theme, whether to show hidden files, and the default view for folders you haven't customized.
+Click the gear at the bottom of the sidebar (⌘,) to choose light, dark, or system appearance, a color theme, whether to show hidden files (and, separately, `.DS_Store` files), and the default view for folders you haven't customized.
 
 Everything is stored as plain JSON in `~/.config/cubby`:
 

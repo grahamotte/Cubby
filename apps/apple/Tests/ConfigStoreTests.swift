@@ -17,10 +17,12 @@ final class ConfigStoreTests: XCTestCase {
         let store = ConfigStore(paths: CubbyPaths(home: home))
         var config = AppConfig.standard
         config.showHiddenFiles = true
+        config.showDSStoreFiles = true
         config.sidebar.insert(SidebarNode.group("Mine", [SidebarNode.group("Nested", [SidebarNode.folder("/tmp")])]), into: nil, at: 0)
         try store.save(config)
         guard case .loaded(let loaded) = store.load() else { return XCTFail("expected loaded") }
         XCTAssertTrue(loaded.showHiddenFiles)
+        XCTAssertTrue(loaded.showDSStoreFiles)
         XCTAssertEqual(loaded.sidebar.nodes[0].children[0].children[0].path, "/tmp")
         XCTAssertFalse(store.isOwnWrite(Data("other".utf8)))
         XCTAssertFalse(store.isOwnWrite(nil))

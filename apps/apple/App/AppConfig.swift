@@ -2,6 +2,7 @@ import Foundation
 
 struct AppConfig: Codable {
     var showHiddenFiles: Bool
+    var showDSStoreFiles: Bool
     var defaultView: FolderView
     var terminal: String
     var appearance: ColorScheme
@@ -11,6 +12,7 @@ struct AppConfig: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case showHiddenFiles
+        case showDSStoreFiles
         case defaultView
         case terminal
         case appearance
@@ -41,8 +43,9 @@ struct AppConfig: Codable {
         )
     }
 
-    init(showHiddenFiles: Bool, defaultView: FolderView, terminal: String, appearance: ColorScheme, theme: String, profiles: [SidebarProfile], profile: Int = 0) {
+    init(showHiddenFiles: Bool, showDSStoreFiles: Bool = false, defaultView: FolderView, terminal: String, appearance: ColorScheme, theme: String, profiles: [SidebarProfile], profile: Int = 0) {
         self.showHiddenFiles = showHiddenFiles
+        self.showDSStoreFiles = showDSStoreFiles
         self.defaultView = defaultView
         self.terminal = terminal
         self.appearance = appearance
@@ -59,6 +62,7 @@ struct AppConfig: Codable {
         }
         self.init(
             showHiddenFiles: try container.decodeIfPresent(Bool.self, forKey: .showHiddenFiles) ?? false,
+            showDSStoreFiles: try container.decodeIfPresent(Bool.self, forKey: .showDSStoreFiles) ?? false,
             defaultView: try container.decodeIfPresent(FolderView.self, forKey: .defaultView) ?? .standard,
             terminal: try container.decodeIfPresent(String.self, forKey: .terminal) ?? "Terminal",
             appearance: try container.decodeIfPresent(ColorScheme.self, forKey: .appearance) ?? .system,
@@ -71,12 +75,17 @@ struct AppConfig: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(showHiddenFiles, forKey: .showHiddenFiles)
+        try container.encode(showDSStoreFiles, forKey: .showDSStoreFiles)
         try container.encode(defaultView, forKey: .defaultView)
         try container.encode(terminal, forKey: .terminal)
         try container.encode(appearance, forKey: .appearance)
         try container.encode(theme, forKey: .theme)
         try container.encode(profiles, forKey: .profiles)
         try container.encode(profile, forKey: .profile)
+    }
+
+    var visibility: Visibility {
+        Visibility(showHidden: showHiddenFiles, showDSStore: showDSStoreFiles)
     }
 
     var sidebar: SidebarTree {

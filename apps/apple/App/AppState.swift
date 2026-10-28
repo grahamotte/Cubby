@@ -55,6 +55,19 @@ final class AppState {
         }
     }
 
+    var showDSStoreFiles: Bool {
+        get { config.showDSStoreFiles }
+        set {
+            config.showDSStoreFiles = newValue
+            saveConfig()
+            NotificationCenter.default.post(name: .showHiddenChanged, object: nil)
+        }
+    }
+
+    var visibility: Visibility {
+        config.visibility
+    }
+
     var defaultView: FolderView {
         get { config.defaultView }
         set {
@@ -191,7 +204,7 @@ final class AppState {
         guard let data, !configStore.isOwnWrite(data) else { return }
         do {
             let loaded = try JSONDecoder().decode(AppConfig.self, from: data)
-            let hiddenChanged = loaded.showHiddenFiles != config.showHiddenFiles
+            let hiddenChanged = loaded.visibility != config.visibility
             let themeChanged = loaded.theme != config.theme || loaded.appearance != config.appearance
             config = loaded
             configError = nil
