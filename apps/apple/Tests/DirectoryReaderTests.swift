@@ -34,6 +34,28 @@ final class DirectoryReaderTests: XCTestCase {
         XCTAssertEqual(try DirectoryReader.read(directory.path).count, 3000)
     }
 
+    func testCountsChildrenWithVisibility() throws {
+        let directory = makeTemporaryDirectory()
+        makeFile(directory, "a.txt")
+        makeFile(directory, ".hidden")
+        makeFile(directory, ".DS_Store")
+        makeFolder(directory, "Folder")
+        makeFile(makeFolder(directory, "Nested"), "deep.txt")
+        XCTAssertEqual(try DirectoryReader.count(directory.path, visibility: .standard), 3)
+        XCTAssertEqual(try DirectoryReader.count(directory.path, visibility: Visibility(showHidden: true, showDSStore: false)), 4)
+        XCTAssertEqual(try DirectoryReader.count(directory.path, visibility: Visibility(showHidden: true, showDSStore: true)), 5)
+        XCTAssertEqual(try DirectoryReader.count(directory.appending(path: "Folder").path, visibility: .standard), 0)
+        XCTAssertThrowsError(try DirectoryReader.count("/nonexistent/\(UUID().uuidString)", visibility: .standard))
+    }
+
+    func testCountsManyEntriesAcrossBuffers() throws {
+        let directory = makeTemporaryDirectory()
+        for index in 0..<3000 {
+            FileManager.default.createFile(atPath: directory.appending(path: "file-with-a-longish-name-\(index).dat").path, contents: nil)
+        }
+        XCTAssertEqual(try DirectoryReader.count(directory.path, visibility: .standard), 3000)
+    }
+
     func testTrailingSlashAndMissingDirectory() throws {
         let directory = makeTemporaryDirectory()
         makeFile(directory, "x")

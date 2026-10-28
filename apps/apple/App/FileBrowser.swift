@@ -82,6 +82,10 @@ enum FileFormat {
         seconds > 0 ? dateFormatter.string(from: Date(timeIntervalSince1970: seconds)) : "--"
     }
 
+    static func count(_ count: Int?) -> String {
+        count.map { NumberFormatter.localizedString(from: NSNumber(value: $0), number: .decimal) } ?? "--"
+    }
+
     static func size(_ item: FileItem) -> String {
         item.isFolder ? "--" : ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file)
     }

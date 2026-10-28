@@ -56,7 +56,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     struct Column {
         let id: String
         let title: String
-        let sort: SortKey
+        let sort: SortKey?
         let width: CGFloat
         let alignment: NSTextAlignment
         let hiddenByDefault: Bool
@@ -68,6 +68,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         Column(id: "added", title: "Date Added", sort: .added, width: 170, alignment: .left, hiddenByDefault: true),
         Column(id: "created", title: "Date Created", sort: .created, width: 170, alignment: .left, hiddenByDefault: true),
         Column(id: "size", title: "Size", sort: .size, width: 80, alignment: .right, hiddenByDefault: false),
+        Column(id: "count", title: "Count", sort: nil, width: 70, alignment: .right, hiddenByDefault: true),
         Column(id: "kind", title: "Kind", sort: .kind, width: 130, alignment: .left, hiddenByDefault: false),
     ]
 
@@ -77,6 +78,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     private let renameField = RenameField.make()
     private var applyingSelection = false
     private var applyingColumns = false
+    private var counter: FolderCounter?
 
     private var items: [FileItem] = []
 
@@ -109,7 +111,10 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             column.width = spec.width
             column.minWidth = spec.id == "name" ? 120 : 50
             column.headerCell.alignment = spec.alignment
-            column.sortDescriptorPrototype = NSSortDescriptor(key: spec.sort.rawValue, ascending: spec.sort.defaultAscending)
+            column.isHidden = spec.hiddenByDefault
+            if let sort = spec.sort {
+                column.sortDescriptorPrototype = NSSortDescriptor(key: sort.rawValue, ascending: sort.defaultAscending)
+            }
             outlineView.addTableColumn(column)
             if spec.id == "name" { outlineView.outlineTableColumn = column }
         }
@@ -147,12 +152,14 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             restoreSelection(selected)
         case .loaded:
             items = host?.model.items ?? []
+            updateCounter()
             outlineView.reloadData()
             updateSortIndicator()
             outlineView.scrollRowToVisible(0)
         case .refreshed:
             let selected = Set(selectedItems.map(\.path))
             items = host?.model.items ?? []
+            updateCounter()
             outlineView.reloadData()
             updateSortIndicator()
             restoreSelection(selected)
@@ -297,6 +304,30 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             item.state = outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier(id))?.isHidden == false ? .on : .off
         }
         applyingColumns = false
+        updateCounter()
+        reloadCounts()
+    }
+
+    private func updateCounter() {
+        guard let path = host?.model.path, outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier("count"))?.isHidden == false else {
+            counter = nil
+            return
+        }
+        let visibility = AppState.shared.visibility
+        if let counter, counter.root == path {
+            counter.visibility = visibility
+            return
+        }
+        let counter = FolderCounter(root: path, visibility: visibility)
+        counter.onChange = { [weak self] in self?.reloadCounts() }
+        self.counter = counter
+    }
+
+    private func reloadCounts() {
+        let column = outlineView.column(withIdentifier: NSUserInterfaceItemIdentifier("count"))
+        let rows = outlineView.rows(in: outlineView.visibleRect)
+        guard column >= 0, rows.length > 0, let range = Range(rows) else { return }
+        outlineView.reloadData(forRowIndexes: IndexSet(integersIn: range), columnIndexes: IndexSet(integer: column))
     }
 
     private func saveColumnState() {
@@ -311,6 +342,8 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         column.isHidden.toggle()
         sender.state = column.isHidden ? .off : .on
         saveColumnState()
+        updateCounter()
+        reloadCounts()
     }
 
     @objc private func columnsChanged(_ notification: Notification) {
@@ -364,6 +397,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         case "added": text = FileFormat.date(item.added)
         case "created": text = FileFormat.date(item.created)
         case "size": text = FileFormat.size(item)
+        case "count": text = item.isFolder ? FileFormat.count(counter?.count(for: item.path)) : "--"
         default: text = item.kind
         }
         cell.textField?.stringValue = text
