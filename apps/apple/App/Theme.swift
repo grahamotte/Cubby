@@ -76,6 +76,14 @@ final class RoundedRowView: NSTableRowView {
 
     override func drawBackground(in dirtyRect: NSRect) {}
 
+    override var isPreviousRowSelected: Bool {
+        didSet { if oldValue != isPreviousRowSelected { needsDisplay = true } }
+    }
+
+    override var isNextRowSelected: Bool {
+        didSet { if oldValue != isNextRowSelected { needsDisplay = true } }
+    }
+
     override func drawSelection(in dirtyRect: NSRect) {
         guard selectionHighlightStyle != .none else { return }
         (isEmphasized ? Theme.selection : Theme.inactiveSelection).setFill()
@@ -87,13 +95,21 @@ final class RoundedRowView: NSTableRowView {
         if !isNextRowSelected {
             rect.size.height -= 1
         }
-        NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6).fill()
-        if isPreviousRowSelected {
-            NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: min(6, rect.height)).fill()
-        }
-        if isNextRowSelected {
-            NSRect(x: rect.minX, y: rect.maxY - min(6, rect.height), width: rect.width, height: min(6, rect.height)).fill()
-        }
+        let radius = min(6, rect.height / 2)
+        let top = isPreviousRowSelected ? 0 : radius
+        let bottom = isNextRowSelected ? 0 : radius
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: rect.minX + top, y: rect.minY))
+        path.line(to: NSPoint(x: rect.maxX - top, y: rect.minY))
+        path.appendArc(from: NSPoint(x: rect.maxX, y: rect.minY), to: NSPoint(x: rect.maxX, y: rect.minY + top), radius: top)
+        path.line(to: NSPoint(x: rect.maxX, y: rect.maxY - bottom))
+        path.appendArc(from: NSPoint(x: rect.maxX, y: rect.maxY), to: NSPoint(x: rect.maxX - bottom, y: rect.maxY), radius: bottom)
+        path.line(to: NSPoint(x: rect.minX + bottom, y: rect.maxY))
+        path.appendArc(from: NSPoint(x: rect.minX, y: rect.maxY), to: NSPoint(x: rect.minX, y: rect.maxY - bottom), radius: bottom)
+        path.line(to: NSPoint(x: rect.minX, y: rect.minY + top))
+        path.appendArc(from: NSPoint(x: rect.minX, y: rect.minY), to: NSPoint(x: rect.minX + top, y: rect.minY), radius: top)
+        path.close()
+        path.fill()
     }
 
     override var interiorBackgroundStyle: NSView.BackgroundStyle { .normal }

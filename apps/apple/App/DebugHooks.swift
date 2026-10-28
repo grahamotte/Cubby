@@ -27,7 +27,7 @@ enum DebugHooks {
         case "layout":
             controller.setLayout(PaneLayout(rawValue: parts[1]) ?? .single)
         case "select":
-            controller.activePane.navigate(to: (parts[1] as NSString).deletingLastPathComponent, select: [(parts[1] as NSString).lastPathComponent])
+            controller.activePane.navigate(to: (parts[1] as NSString).deletingLastPathComponent, select: Set(parts.dropFirst().map { ($0 as NSString).lastPathComponent }))
         case "frame":
             controller.window?.setFrame(NSRect(x: 100, y: 100, width: Double(parts[1]) ?? 1100, height: Double(parts[2]) ?? 700), display: true)
         case "time":
