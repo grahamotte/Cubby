@@ -29,6 +29,7 @@ let package = Package(
                 "PaneController.swift",
                 "PreviewView.swift",
                 "SidebarController.swift",
+                "Theme.swift",
                 "TopBar.swift",
             ],
             sources: [
