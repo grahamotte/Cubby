@@ -63,14 +63,6 @@ final class AppState {
         }
     }
 
-    var terminal: String {
-        get { config.terminal }
-        set {
-            config.terminal = newValue
-            saveConfig()
-        }
-    }
-
     var colorScheme: ColorScheme {
         get { config.appearance }
         set {

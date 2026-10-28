@@ -43,7 +43,9 @@ enum DebugHooks {
             }
             check()
         case "action":
-            NSApp.sendAction(Selector(parts[1]), to: nil, from: nil)
+            if !NSApp.sendAction(Selector(parts[1]), to: nil, from: nil) {
+                _ = controller.window?.firstResponder?.tryToPerform(Selector(parts[1]), with: nil)
+            }
         case "type":
             guard let editor = controller.window?.firstResponder as? NSTextView else { return }
             editor.selectAll(nil)

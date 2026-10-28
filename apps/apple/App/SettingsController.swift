@@ -206,23 +206,12 @@ final class FocusableView: NSView {
 final class SettingsController: NSViewController {
     var onClose: (() -> Void)?
 
-    private static let terminals = [
-        ("Terminal", "com.apple.Terminal"),
-        ("iTerm", "com.googlecode.iterm2"),
-        ("Ghostty", "com.mitchellh.ghostty"),
-        ("Warp", "dev.warp.Warp-Stable"),
-        ("kitty", "net.kovidgoyal.kitty"),
-        ("Alacritty", "org.alacritty"),
-        ("WezTerm", "com.github.wez.wezterm"),
-    ]
-
     private let schemePopup = SettingsController.popup()
     private let profileList = NSStackView()
     private let themeGrid = NSStackView()
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
     private var shownThemes: ThemeLibrary?
     private let hiddenSwitch = NSSwitch()
-    private let terminalPopup = SettingsController.popup()
     private let modePopup = SettingsController.popup()
     private let sortPopup = SettingsController.popup()
     private let orderPopup = SettingsController.popup()
@@ -272,9 +261,9 @@ final class SettingsController: NSViewController {
         hiddenSwitch.target = self
         hiddenSwitch.action = #selector(hiddenChanged(_:))
 
-        for (popup, action) in [(terminalPopup, #selector(terminalChanged(_:))), (modePopup, #selector(defaultViewChanged(_:))), (sortPopup, #selector(defaultViewChanged(_:))), (orderPopup, #selector(defaultViewChanged(_:)))] {
+        for popup in [modePopup, sortPopup, orderPopup] {
             popup.target = self
-            popup.action = action
+            popup.action = #selector(defaultViewChanged(_:))
         }
         modePopup.addItems(withTitles: ViewMode.allCases.map(\.title))
         sortPopup.addItems(withTitles: SortKey.allCases.map(\.title))
@@ -293,25 +282,18 @@ final class SettingsController: NSViewController {
         let iconControl = NSStackView(views: [iconValue, iconSlider])
         iconControl.spacing = 8
 
-        let openConfig = link("Open config.json", target: nil, action: #selector(AppDelegate.openConfigFile(_:)))
-        let path = NSTextField(labelWithString: (AppState.shared.paths.configFile.path as NSString).abbreviatingWithTildeInPath)
-        path.font = .systemFont(ofSize: 12)
-        path.textColor = Theme.tertiaryText
-        path.lineBreakMode = .byTruncatingMiddle
-        let footer = NSStackView(views: [path, openConfig])
-        footer.spacing = 10
+        let sortControl = NSStackView(views: [sortPopup, orderPopup])
+        sortControl.spacing = 4
 
         let appearanceCard = card([
             row("Color scheme", "Follow the system, or always use light or dark.", schemePopup),
         ])
         let generalCard = card([
             row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
-            row("Terminal", "The app Open in Terminal uses.", terminalPopup),
         ])
         let defaultViewCard = card([
             row("View", "How folders you haven't customized are shown.", modePopup),
-            row("Sort by", "The column folders are sorted by.", sortPopup),
-            row("Order", "Sort direction.", orderPopup),
+            row("Sort by", "The column and direction folders are sorted by.", sortControl),
             row("Icon size", "Icon and gallery thumbnail size.", iconControl),
         ])
         let profilesCard = CardView()
@@ -328,25 +310,22 @@ final class SettingsController: NSViewController {
         let sections: [NSView] = [
             profilesTitle,
             profilesCard,
-            sectionTitle("Appearance"),
-            appearanceCard,
             sectionTitle("Theme"),
+            appearanceCard,
             themeGrid,
             themeErrors,
             sectionTitle("General"),
             generalCard,
             sectionTitle("Default view"),
             defaultViewCard,
-            footer,
         ]
         let stack = NSStackView(views: sections)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
-        for view in [profilesCard, appearanceCard, themeGrid, themeErrors, generalCard] {
+        for view in [profilesCard, themeGrid, themeErrors, generalCard] {
             stack.setCustomSpacing(28, after: view)
         }
-        stack.setCustomSpacing(16, after: defaultViewCard)
         stack.translatesAutoresizingMaskIntoConstraints = false
         for view in sections where view is CardView || view === themeGrid || view === themeErrors || view === profilesTitle {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -559,21 +538,6 @@ final class SettingsController: NSViewController {
         iconSlider.integerValue = view.iconSize
         iconValue.stringValue = "\(view.iconSize) pt"
 
-        terminalPopup.removeAllItems()
-        let current = state.config.terminal
-        let selected = SettingsController.terminals.first { $0.0 == current || $0.1 == current }
-        var choices = SettingsController.terminals.filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.1) != nil }
-        if let selected, !choices.contains(where: { $0.1 == selected.1 }) {
-            choices.append(selected)
-        }
-        if selected == nil {
-            choices.append((current, current))
-        }
-        for (name, bundle) in choices {
-            terminalPopup.addItem(withTitle: name)
-            terminalPopup.lastItem?.representedObject = bundle
-        }
-        terminalPopup.selectItem(at: terminalPopup.indexOfItem(withRepresentedObject: selected?.1 ?? current))
     }
 
     @objc private func schemeChanged(_ sender: NSPopUpButton) {
@@ -582,11 +546,6 @@ final class SettingsController: NSViewController {
 
     @objc private func hiddenChanged(_ sender: NSSwitch) {
         AppState.shared.showHiddenFiles = sender.state == .on
-    }
-
-    @objc private func terminalChanged(_ sender: NSPopUpButton) {
-        guard let name = sender.selectedItem?.representedObject as? String else { return }
-        AppState.shared.terminal = name
     }
 
     @objc private func defaultViewChanged(_ sender: Any?) {

@@ -104,12 +104,12 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 
 ## Colors
 
-Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Settings > Appearance picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
+Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Settings > Theme picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
 
 The default "Workbench" theme is a barely warm paper neutral with the macOS accent color as its only hue.
 
 ### Primary
-- **Accent** (#007AFF, the system accent by default): selection washes at 20% opacity for the focused list or sidebar row, the solid pill behind a focused selected tile name; focus and links ("Open config.json"). The token value is the default blue; at runtime the Workbench theme uses `NSColor.controlAccentColor`, and other themes set their own.
+- **Accent** (#007AFF, the system accent by default): selection washes at 20% opacity for the focused list or sidebar row, the solid pill behind a focused selected tile name; focus and links ("Add Profile"). The token value is the default blue; at runtime the Workbench theme uses `NSColor.controlAccentColor`, and other themes set their own.
 
 ### Neutral
 - **Workbench Content** (#FCFCFB light / #1E1F21 dark): the main pane, top bar, list header, and pane headers. The largest surface; files sit directly on it.
