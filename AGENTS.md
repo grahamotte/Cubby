@@ -59,7 +59,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `runbooks/` - Project operation instructions, such as deployment and publishing.
 - `.env.default` - Template for the `.env.*` secret files.
 - `.env.*` - Gitignored secrets, identifiers issued or rotated with them, and `RAILS_ENV`/`NODE_ENV`. Do not expose secret values. Mr. Moto generates them from 1Password with its `secrets` command; each item stores one concealed field per env key, labeled with the key name, and the file follows the `.env.default` layout with extra keys at the end.
-- `apps/` - Mobile apps for iOS and Android.
+- `apps/` - The Cubby macOS app and its tests.
 - `assets/` - Shared images and media.
 - `backend/` - Ruby on Rails API server.
 - `config.json` - Non-secret configuration, including mobile app release (`apps`) and website subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`.
@@ -85,9 +85,28 @@ Run `mise tasks` to discover available tasks and their descriptions, including d
 
 ### Deployment
 
-This repository is deployed to codemoto.org with `mise deploy` and the [deploy runbook](runbooks/deploy.md).
+This repository is not deployed. Do not run `mise deploy` or the [deploy runbook](runbooks/deploy.md). The `deploy/` tooling is inherited from Code Moto and unused.
 
-Every Code Moto downstream repository states deployment in its own Repo Specific section with one of these lines, and merges preserve it:
+### Cubby
 
-- Not deployed: "This repository is not deployed. Do not run `mise deploy` or the [deploy runbook](runbooks/deploy.md). The `deploy/` tooling is inherited from Code Moto and unused."
-- Deployed: "This repository is deployed to <host or domain> with `mise deploy` and the [deploy runbook](runbooks/deploy.md)."
+Cubby is a native AppKit file manager for macOS 27+, inspired by QSpace Pro and meant as a daily Finder replacement. It is distributed as a signed and notarized repository release, not through the App Store. Keep it simple, fast, and light on options: prefer too few settings to too many. It has no cloud-drive integrations and never writes files such as `.DS_Store` or `.qspacesettings` into browsed folders.
+
+### Apple App Architecture
+
+- The app source is in `apps/apple/App`; the Xcode project is `apps/apple/App.xcodeproj` with the `Cubby` scheme. The project uses a synchronized folder group, so new files in `App/` are built automatically.
+- `CubbyMain` starts `AppDelegate`, which builds the menu in code (`MainMenu`), restores the session, and owns window and tab creation. There are no nibs or storyboards.
+- All state lives in `~/.config/cubby` (`~/.config/cubby-dev` for Debug builds, which compile with `CUBBY_DEV`). `config.json` is the hand-editable config: `showHiddenFiles`, `defaultView`, `terminal`, and `sidebar`. `folders.json` holds per-folder views and `session.json` holds open windows, tabs, layouts, and list columns. `AppState` owns these stores, watches `config.json` with `PathWatcher`, and reloads it live; when the file is invalid it reports the error and never overwrites it.
+- The sidebar is a tree of `SidebarNode` groups and folders. Groups nest; folders cannot hold children, and only folders (not files or packages) can be added. `SidebarTree` owns all tree edits; `SidebarController` renders it, renames inline, reorders by drag, adds folders dropped between rows, and moves (⌥ copies) files dropped onto a folder row.
+- Per-folder views (`FolderView`: mode, sort, direction, icon size) are stored in `FolderViewStore` keyed by path plus device and inode, so a view follows a renamed or moved folder. Folders without an entry use `defaultView`; entries equal to the default are not stored.
+- `DirectoryReader` lists folders with `getattrlistbulk` for speed on folders with 100k+ entries and falls back to `FileManager` where unsupported. `DirectoryModel` reads, merges, sorts, and filters off the main thread, reuses unchanged `FileItem` instances, and reloads through `PathWatcher` with a delay that scales with the last load time. Keep per-item work lazy and per-row work cheap.
+- Each window is one native tab. `BrowserWindowController` holds the sidebar and a `PaneLayout` of `PaneController`s; toolbar and menu actions reach the active pane through `supplementalTarget(forAction:sender:)`. Each pane hosts one `FileBrowser`: `ListBrowser` (outline with expandable folders and configurable columns), `IconBrowser`, `ColumnBrowser`, or `GalleryBrowser`. `PreviewView` and `ThumbnailCache` show Quick Look thumbnails; Space opens the Quick Look panel.
+- `FileOperations` performs moves, copies, trash, renames, and creation with conflict choices and is the tested core. `FileActions` runs it off the main thread, asks about conflicts, updates sidebar paths after moves, and registers one undo group per operation on the shared undo manager (`groupsByEvent` is off; undo does not register redo).
+- System boundaries are the file system and Quick Look; tests use temporary directories.
+
+### Apple Workflow
+
+- `mise test` runs the repository suite, including the `CubbyCore` package tests in `apps/apple/Tests`, which compile the non-UI files listed in `Tests/Package.swift`. Add new business-logic files to its `sources` and app-only files to its `exclude`.
+- Use `mise simulate macos` to build and launch the Debug app and `mise xcode` to open the project.
+- Screen capture is not available to agents. To check UI, run the Debug build and use `mise app:debug` with the `DebugHooks` commands, for example `mise app:debug "snap|/tmp/cubby.png"`, then read the PNG. Snapshots do not render source-list selection vibrancy.
+- Opening protected folders such as Desktop prompts for access; reads happen off the main thread so a pending prompt does not hang the UI.
+- Use the [publish runbook](runbooks/publish.md) for versioning and the signed, notarized GitHub release workflow.

@@ -1,10 +1,10 @@
 {
-  "domain": "codemoto.org",
-  "githubRepo": "git@github.com:grahamotte/CodeMoto.git",
-  "database": "codemoto",
+  "domain": "cubby.graham.lol",
+  "githubRepo": "git@github.com:grahamotte/Cubby.git",
+  "database": "cubby",
   "site": {
-    "title": "Code Moto",
-    "description": "code moto is the base for other projects",
+    "title": "Cubby",
+    "description": "A fast, simple file manager for macOS.",
     "themeColor": "oklch(0 0 0)"
   },
   "subdomains": [
@@ -36,90 +36,29 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.2.1",
-    "contactEmail": "go@graham.lol",
-    "contactFirstName": "Graham",
-    "contactLastName": "Otte",
-    "contactPhone": "+1 202 555 0100",
-    "copyright": "2026 Graham Otte",
-    "demoAccountName": "",
-    "demoAccountPassword": "",
-    "demoAccountRequired": false,
-    "description": "Code Moto helps developers build momentum with focused coding sessions. Name what you're working on, choose a session length, and track completed sessions entirely on your device.",
-    "keywords": "focus,timer,coding,developer,productivity,session,momentum,work",
-    "marketingUrl": "https://codemoto.org",
-    "name": "Code Moto",
-    "notes": "Code Moto does not require an account or sign-in. All session data is stored locally on the device.",
-    "primaryLocale": "en-US",
-    "promotionalText": "Build momentum with focused coding sessions and keep a private record of completed work.",
-    "releaseType": "AFTER_APPROVAL",
-    "subtitle": "Focus timer for developers",
-    "supportUrl": "https://codemoto.org",
+    "build": "0.1.0",
+    "marketingUrl": "https://github.com/grahamotte/Cubby",
+    "name": "Cubby",
+    "skip_app_stores": true,
+    "supportUrl": "https://github.com/grahamotte/Cubby",
     "targets": {
       "apple": {
-        "ios": {
-          "archiveDestination": "generic/platform=iOS",
-          "bundleIdentifier": "com.grahamotte.codemoto",
-          "platform": "IOS",
-          "project": "apps/apple/App.xcodeproj",
-          "scheme": "App",
-          "screenshots": [
-            {
-              "displayType": "APP_IPHONE_65",
-              "path": "apps/screenshots/ios-iphone-1.jpeg"
-            },
-            {
-              "displayType": "APP_IPAD_PRO_3GEN_129",
-              "path": "apps/screenshots/ios-ipad-1.jpeg"
-            }
-          ],
-          "simulatorDestination": "generic/platform=iOS Simulator",
-          "simulatorProduct": "Debug-iphonesimulator/App.app",
-          "simulators": {
-            "ipad": "iPad",
-            "iphone": "iPhone"
-          }
-        },
         "macos": {
           "archiveDestination": "generic/platform=macOS",
-          "bundleIdentifier": "com.grahamotte.codemoto",
+          "bundleIdentifier": "com.grahamotte.cubby",
           "platform": "MAC_OS",
           "project": "apps/apple/App.xcodeproj",
-          "scheme": "App-macOS",
-          "screenshots": [
-            {
-              "displayType": "APP_DESKTOP",
-              "path": "apps/screenshots/macos-1.jpeg"
-            }
-          ],
+          "scheme": "Cubby",
           "simulatorDestination": "platform=macOS",
-          "simulatorProduct": "Debug/App-macOS.app",
+          "simulatorProduct": "Debug/Cubby.app",
           "simulators": {
             "macos": "Mac"
-          }
-        },
-        "tvos": {
-          "archiveDestination": "generic/platform=tvOS",
-          "bundleIdentifier": "com.grahamotte.codemoto",
-          "platform": "TV_OS",
-          "project": "apps/apple/App.xcodeproj",
-          "scheme": "App-tvOS",
-          "screenshots": [
-            {
-              "displayType": "APP_APPLE_TV",
-              "path": "apps/screenshots/tvos-1.jpeg"
-            }
-          ],
-          "simulatorDestination": "generic/platform=tvOS Simulator",
-          "simulatorProduct": "Debug-appletvsimulator/App-tvOS.app",
-          "simulators": {
-            "tv": "Apple TV"
           }
         }
       },
       "android": {}
     },
-    "version": "0.2.1",
-    "whatsNew": "Bug fixes."
+    "version": "0.1.0",
+    "whatsNew": "First release of Cubby: a fast file manager with list, icon, column, and gallery views, multi-pane layouts, and a sidebar of nested groups."
   }
 }
