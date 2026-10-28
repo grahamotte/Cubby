@@ -25,127 +25,181 @@ enum MainMenu {
         return item
     }
 
-    private static func item(_ title: String, _ action: Selector?, _ key: String = "", _ modifiers: NSEvent.ModifierFlags = .command, tag: Int = 0, represented: Any? = nil) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-        item.keyEquivalentModifierMask = modifiers
+    private static func item(_ title: String, _ action: Selector?, tag: Int = 0) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.tag = tag
-        item.representedObject = represented
         return item
+    }
+
+    private static func add(_ id: ShortcutID, _ action: Selector?, to menu: NSMenu, title: String? = nil, tag: Int = 0, represented: Any? = nil) {
+        let shortcut = Shortcuts[id]
+        for (index, combo) in shortcut.keys.enumerated() {
+            let item = NSMenuItem(title: title ?? shortcut.title, action: action, keyEquivalent: combo.keyEquivalent)
+            item.keyEquivalentModifierMask = combo.modifiers.flags
+            item.tag = tag
+            item.representedObject = represented
+            if index > 0 {
+                item.isHidden = true
+                item.allowsKeyEquivalentWhenHidden = true
+            }
+            menu.addItem(item)
+        }
     }
 
     private static func appMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addItem(item("About Cubby", #selector(NSApplication.orderFrontStandardAboutPanel(_:))))
         menu.addItem(.separator())
-        menu.addItem(item("Settings…", #selector(BrowserWindowController.showSettings(_:)), ","))
+        add(.settings, #selector(BrowserWindowController.showSettings(_:)), to: menu)
         menu.addItem(item("Open Config File…", #selector(AppDelegate.openConfigFile(_:))))
         menu.addItem(.separator())
         let services = NSMenu()
         menu.addItem(submenu("Services", services))
         NSApp.servicesMenu = services
         menu.addItem(.separator())
-        menu.addItem(item("Hide Cubby", #selector(NSApplication.hide(_:)), "h"))
-        menu.addItem(item("Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]))
+        add(.hideCubby, #selector(NSApplication.hide(_:)), to: menu)
+        add(.hideOthers, #selector(NSApplication.hideOtherApplications(_:)), to: menu)
         menu.addItem(item("Show All", #selector(NSApplication.unhideAllApplications(_:))))
         menu.addItem(.separator())
-        menu.addItem(item("Quit Cubby", #selector(NSApplication.terminate(_:)), "q"))
+        add(.quit, #selector(NSApplication.terminate(_:)), to: menu)
         return menu
     }
 
     private static func fileMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item("New Window", #selector(AppDelegate.newWindow(_:)), "n"))
-        menu.addItem(item("New Folder", #selector(PaneController.newFolder(_:)), "n", [.command, .shift]))
-        menu.addItem(item("New Folder with Selection", #selector(PaneController.newFolderWithSelection(_:)), "n", [.command, .control]))
-        menu.addItem(item("New Text File", #selector(PaneController.newFile(_:)), "n", [.command, .option]))
+        add(.newWindow, #selector(AppDelegate.newWindow(_:)), to: menu)
+        add(.newFolder, #selector(PaneController.newFolder(_:)), to: menu)
+        add(.newFolderWithSelection, #selector(PaneController.newFolderWithSelection(_:)), to: menu)
+        add(.newTextFile, #selector(PaneController.newFile(_:)), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Open", #selector(PaneController.openSelection(_:)), "o"))
-        menu.addItem(item("Close Window", #selector(NSWindow.performClose(_:)), "w"))
+        add(.open, #selector(PaneController.openSelection(_:)), to: menu)
+        add(.closeWindow, #selector(NSWindow.performClose(_:)), to: menu)
         menu.addItem(.separator())
         menu.addItem(item("Rename", #selector(PaneController.renameSelection(_:))))
-        menu.addItem(item("Duplicate", #selector(PaneController.duplicate(_:)), "d"))
+        add(.duplicate, #selector(PaneController.duplicate(_:)), to: menu)
         menu.addItem(item("Compress", #selector(PaneController.compress(_:))))
-        menu.addItem(item("Move to Trash", #selector(PaneController.moveToTrash(_:)), "\u{8}"))
+        add(.moveToTrash, #selector(PaneController.moveToTrash(_:)), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Quick Look", #selector(PaneController.quickLook(_:)), "y"))
-        menu.addItem(item("Show in Finder", #selector(PaneController.showInFinder(_:)), "r", [.command, .option]))
-        menu.addItem(item("Open in Terminal", #selector(PaneController.openInTerminal(_:)), "t", [.command, .option]))
-        menu.addItem(item("Add to Sidebar", #selector(PaneController.addToSidebar(_:)), "t", [.command, .control]))
+        add(.quickLook, #selector(PaneController.quickLook(_:)), to: menu)
+        add(.showInFinder, #selector(PaneController.showInFinder(_:)), to: menu)
+        add(.openInTerminal, #selector(PaneController.openInTerminal(_:)), to: menu)
+        add(.addToSidebar, #selector(PaneController.addToSidebar(_:)), to: menu)
         return menu
     }
 
     private static func editMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item("Undo", Selector(("undo:")), "z"))
-        menu.addItem(item("Redo", Selector(("redo:")), "z", [.command, .shift]))
+        add(.undo, Selector(("undo:")), to: menu)
+        add(.redo, Selector(("redo:")), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Cut", #selector(NSText.cut(_:)), "x"))
-        menu.addItem(item("Copy", #selector(NSText.copy(_:)), "c"))
-        menu.addItem(item("Copy Path", #selector(PaneController.copyPath(_:)), "c", [.command, .option]))
-        menu.addItem(item("Paste", #selector(NSText.paste(_:)), "v"))
-        menu.addItem(item("Move Item Here", #selector(PaneController.pasteAndMove(_:)), "v", [.command, .option]))
-        menu.addItem(item("Select All", #selector(NSText.selectAll(_:)), "a"))
+        add(.cut, #selector(NSText.cut(_:)), to: menu)
+        add(.copy, #selector(NSText.copy(_:)), to: menu)
+        add(.copyPath, #selector(PaneController.copyPath(_:)), to: menu)
+        add(.paste, #selector(NSText.paste(_:)), to: menu)
+        add(.moveItemHere, #selector(PaneController.pasteAndMove(_:)), to: menu)
+        add(.selectAll, #selector(NSText.selectAll(_:)), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Filter", #selector(BrowserWindowController.performFindPanelAction(_:)), "f"))
+        add(.filter, #selector(BrowserWindowController.performFindPanelAction(_:)), to: menu)
         return menu
     }
 
     private static func viewMenu() -> NSMenu {
         let menu = NSMenu()
         for (index, mode) in ViewMode.allCases.enumerated() {
-            menu.addItem(item("as \(mode.title)", #selector(PaneController.setViewMode(_:)), "\(index + 1)", tag: index))
+            add(.viewMode(mode), #selector(PaneController.setViewMode(_:)), to: menu, tag: index)
         }
         menu.addItem(.separator())
         let layouts = NSMenu()
         for (index, layout) in PaneLayout.allCases.enumerated() {
-            layouts.addItem(item(layout.title, #selector(BrowserWindowController.changeLayout(_:)), "\(index + 1)", [.command, .option], tag: index))
+            add(.layout(layout), #selector(BrowserWindowController.changeLayout(_:)), to: layouts, tag: index)
         }
         menu.addItem(submenu("Layout", layouts))
         let sort = NSMenu()
         for (index, key) in SortKey.allCases.enumerated() {
-            sort.addItem(item(key.title, #selector(PaneController.sortBy(_:)), "\(index + 1)", [.command, .control], tag: index))
+            add(.sort(key), #selector(PaneController.sortBy(_:)), to: sort, title: key.title, tag: index)
         }
         menu.addItem(submenu("Sort By", sort))
-        menu.addItem(item("Bigger Icons", #selector(PaneController.biggerIcons(_:)), "+"))
-        menu.addItem(item("Smaller Icons", #selector(PaneController.smallerIcons(_:)), "-"))
+        add(.biggerIcons, #selector(PaneController.biggerIcons(_:)), to: menu)
+        add(.smallerIcons, #selector(PaneController.smallerIcons(_:)), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Show Hidden Files", #selector(AppDelegate.toggleHiddenFiles(_:)), ".", [.command, .shift]))
-        menu.addItem(item("Reload", #selector(PaneController.refresh(_:)), "r"))
+        add(.showHiddenFiles, #selector(AppDelegate.toggleHiddenFiles(_:)), to: menu)
+        add(.reload, #selector(PaneController.refresh(_:)), to: menu)
         menu.addItem(.separator())
-        menu.addItem(item("Toggle Sidebar", #selector(BrowserWindowController.toggleSidebarVisibility(_:)), "s", [.command, .control]))
-        menu.addItem(item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
+        add(.toggleSidebar, #selector(BrowserWindowController.toggleSidebarVisibility(_:)), to: menu)
+        add(.fullScreen, #selector(NSWindow.toggleFullScreen(_:)), to: menu)
         return menu
     }
 
     private static func goMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item("Back", #selector(PaneController.goBack(_:)), "["))
-        menu.addItem(item("Forward", #selector(PaneController.goForward(_:)), "]"))
-        menu.addItem(item("Enclosing Folder", #selector(PaneController.goToEnclosingFolder(_:)), String(Character(UnicodeScalar(NSUpArrowFunctionKey)!))))
+        add(.back, #selector(PaneController.goBack(_:)), to: menu)
+        add(.forward, #selector(PaneController.goForward(_:)), to: menu)
+        add(.enclosingFolder, #selector(PaneController.goToEnclosingFolder(_:)), to: menu)
         menu.addItem(.separator())
         let home = NSHomeDirectory()
-        let locations: [(String, String, String, NSEvent.ModifierFlags)] = [
-            ("Home", home, "h", [.command, .shift]),
-            ("Desktop", home + "/Desktop", "d", [.command, .shift]),
-            ("Documents", home + "/Documents", "o", [.command, .shift]),
-            ("Downloads", home + "/Downloads", "l", [.command, .option]),
-            ("Applications", "/Applications", "a", [.command, .shift]),
-            ("Computer", "/", "c", [.command, .shift]),
+        let locations: [(ShortcutID, String)] = [
+            (.home, home),
+            (.desktop, home + "/Desktop"),
+            (.documents, home + "/Documents"),
+            (.downloads, home + "/Downloads"),
+            (.applications, "/Applications"),
+            (.computer, "/"),
         ]
-        for (title, path, key, modifiers) in locations {
-            menu.addItem(item(title, #selector(BrowserWindowController.goToLocation(_:)), key, modifiers, represented: path))
+        for (id, path) in locations {
+            add(id, #selector(BrowserWindowController.goToLocation(_:)), to: menu, represented: path)
         }
         menu.addItem(.separator())
-        menu.addItem(item("Go to Folder…", #selector(BrowserWindowController.goToFolder(_:)), "g", [.command, .shift]))
+        add(.goToFolder, #selector(BrowserWindowController.goToFolder(_:)), to: menu)
         return menu
     }
 
     private static func windowMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"))
+        add(.minimize, #selector(NSWindow.performMiniaturize(_:)), to: menu)
         menu.addItem(item("Zoom", #selector(NSWindow.performZoom(_:))))
         menu.addItem(.separator())
         menu.addItem(item("Bring All to Front", #selector(NSApplication.arrangeInFront(_:))))
         return menu
+    }
+}
+
+extension KeyCombo {
+    init?(event: NSEvent) {
+        let key: Key
+        switch event.keyCode {
+        case 36, 76: key = .returnKey
+        case 49: key = .space
+        case 48: key = .tab
+        case 51: key = .delete
+        case 117: key = .forwardDelete
+        case 53: key = .escape
+        case 126: key = .upArrow
+        case 125: key = .downArrow
+        case 123: key = .leftArrow
+        case 124: key = .rightArrow
+        default:
+            guard let characters = event.charactersIgnoringModifiers?.lowercased(), !characters.isEmpty else { return nil }
+            key = .character(characters)
+        }
+        self.init(key, Modifiers(event.modifierFlags))
+    }
+}
+
+extension KeyCombo.Modifiers {
+    init(_ flags: NSEvent.ModifierFlags) {
+        self = []
+        if flags.contains(.control) { insert(.control) }
+        if flags.contains(.option) { insert(.option) }
+        if flags.contains(.shift) { insert(.shift) }
+        if flags.contains(.command) { insert(.command) }
+    }
+
+    var flags: NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if contains(.control) { flags.insert(.control) }
+        if contains(.option) { flags.insert(.option) }
+        if contains(.shift) { flags.insert(.shift) }
+        if contains(.command) { flags.insert(.command) }
+        return flags
     }
 }

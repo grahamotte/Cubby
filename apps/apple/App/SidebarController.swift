@@ -261,12 +261,12 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     }
 
     func handleKey(_ event: NSEvent) -> Bool {
-        guard let node = outlineView.item(atRow: outlineView.selectedRow) as? SidebarNode else { return false }
-        switch event.keyCode {
-        case 36, 76:
+        guard let node = outlineView.item(atRow: outlineView.selectedRow) as? SidebarNode, let combo = KeyCombo(event: event) else { return false }
+        switch Shortcuts.action(for: combo, in: .sidebar) {
+        case .renameSidebarItem:
             beginRename(node)
             return true
-        case 51, 117:
+        case .removeSidebarItem:
             remove(node)
             return true
         default:

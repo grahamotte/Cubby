@@ -219,6 +219,11 @@ final class SettingsController: NSViewController {
     private let orderPopup = SettingsController.popup()
     private let iconSlider = NSSlider(value: 80, minValue: Double(FolderView.iconSizes.lowerBound), maxValue: Double(FolderView.iconSizes.upperBound), target: nil, action: nil)
     private let iconValue = NSTextField(labelWithString: "")
+    private let header = NSTextField(labelWithString: "Settings")
+    private lazy var backButton = PlainButton.make("chevron.left", "Back to Settings", target: self, action: #selector(showMain(_:)))
+    private var mainPage = NSScrollView()
+    private var shortcutsPage = NSScrollView()
+    private var titleLeading: NSLayoutConstraint?
     private var observers: [NSObjectProtocol] = []
 
     init() {
@@ -298,6 +303,7 @@ final class SettingsController: NSViewController {
         let generalCard = card([
             row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
             dsStoreRow,
+            row("Keyboard shortcuts", "Every keyboard shortcut in Cubby.", PlainButton.make("chevron.right", "Keyboard Shortcuts", target: self, action: #selector(showShortcuts(_:)))),
         ])
         let defaultViewCard = card([
             row("View", "How folders you haven't customized are shown.", modePopup),
@@ -334,11 +340,47 @@ final class SettingsController: NSViewController {
         for view in [profilesCard, themeGrid, themeErrors, generalCard] {
             stack.setCustomSpacing(28, after: view)
         }
-        stack.translatesAutoresizingMaskIntoConstraints = false
         for view in sections where view is CardView || view === themeGrid || view === themeErrors || view === profilesTitle {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
+        mainPage = page(stack)
+        shortcutsPage = page(shortcutsStack())
+        shortcutsPage.isHidden = true
+
+        header.font = .systemFont(ofSize: 13, weight: .medium)
+        header.textColor = Theme.text
+        backButton.isHidden = true
+        let title = NSStackView(views: [backButton, header])
+        title.spacing = 2
+        title.translatesAutoresizingMaskIntoConstraints = false
+        let close = PlainButton.make("xmark", "Close Settings", target: self, action: #selector(close(_:)))
+
+        let root = FocusableView()
+        for view in [mainPage, shortcutsPage, title, close] {
+            root.addSubview(view)
+        }
+        titleLeading = title.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16)
+        NSLayoutConstraint.activate([
+            titleLeading!,
+            title.centerYAnchor.constraint(equalTo: close.centerYAnchor),
+            close.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
+            close.centerYAnchor.constraint(equalTo: root.topAnchor, constant: headerHeight / 2),
+        ])
+        for page in [mainPage, shortcutsPage] {
+            NSLayoutConstraint.activate([
+                page.topAnchor.constraint(equalTo: root.topAnchor, constant: headerHeight),
+                page.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+                page.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+                page.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            ])
+        }
+        view = root
+        refresh()
+    }
+
+    private func page(_ stack: NSStackView) -> NSScrollView {
+        stack.translatesAutoresizingMaskIntoConstraints = false
         let document = FlippedView()
         document.translatesAutoresizingMaskIntoConstraints = false
         document.addSubview(stack)
@@ -349,28 +391,9 @@ final class SettingsController: NSViewController {
         scroll.drawsBackground = false
         scroll.automaticallyAdjustsContentInsets = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
-
-        let header = NSTextField(labelWithString: "Settings")
-        header.font = .systemFont(ofSize: 13, weight: .medium)
-        header.textColor = Theme.text
-        header.translatesAutoresizingMaskIntoConstraints = false
-        let close = PlainButton.make("xmark", "Close Settings", target: self, action: #selector(close(_:)))
-
-        let root = FocusableView()
-        for view in [scroll, header, close] {
-            root.addSubview(view)
-        }
         let width = stack.widthAnchor.constraint(equalToConstant: 640)
         width.priority = .defaultHigh
         NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16),
-            header.centerYAnchor.constraint(equalTo: close.centerYAnchor),
-            close.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
-            close.centerYAnchor.constraint(equalTo: root.topAnchor, constant: headerHeight / 2),
-            scroll.topAnchor.constraint(equalTo: root.topAnchor, constant: headerHeight),
-            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             document.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
             document.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
             document.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
@@ -380,8 +403,81 @@ final class SettingsController: NSViewController {
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: document.leadingAnchor, constant: 32),
             width,
         ])
-        view = root
-        refresh()
+        return scroll
+    }
+
+    private func shortcutsStack() -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        for (section, shortcuts) in Shortcuts.sections {
+            let card = card(shortcuts.map(shortcutRow))
+            stack.addArrangedSubview(sectionTitle(section.rawValue))
+            stack.addArrangedSubview(card)
+            stack.setCustomSpacing(28, after: card)
+            card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+        return stack
+    }
+
+    private func shortcutRow(_ shortcut: Shortcut) -> NSView {
+        let title = NSTextField(labelWithString: shortcut.title)
+        title.font = .systemFont(ofSize: 13)
+        title.textColor = Theme.text
+        title.lineBreakMode = .byTruncatingTail
+        title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let keys = NSStackView(views: shortcut.keys.map(keycap))
+        keys.spacing = 6
+        let row = NSView()
+        for view in [title, keys] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            row.addSubview(view)
+        }
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: 36),
+            title.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            title.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: keys.leadingAnchor, constant: -16),
+            keys.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            keys.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+        ])
+        return row
+    }
+
+    private func keycap(_ combo: KeyCombo) -> NSView {
+        let label = NSTextField(labelWithString: combo.display)
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = Theme.secondaryText
+        label.translatesAutoresizingMaskIntoConstraints = false
+        let cap = FillView()
+        cap.color = Theme.inactiveSelection
+        cap.cornerRadius = 5
+        cap.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: cap.leadingAnchor, constant: 7),
+            label.trailingAnchor.constraint(equalTo: cap.trailingAnchor, constant: -7),
+            label.topAnchor.constraint(equalTo: cap.topAnchor, constant: 2),
+            label.bottomAnchor.constraint(equalTo: cap.bottomAnchor, constant: -2),
+        ])
+        return cap
+    }
+
+    @objc private func showShortcuts(_ sender: Any?) {
+        setShortcutsVisible(true)
+    }
+
+    @objc private func showMain(_ sender: Any?) {
+        setShortcutsVisible(false)
+    }
+
+    private func setShortcutsVisible(_ visible: Bool) {
+        mainPage.isHidden = visible
+        shortcutsPage.isHidden = !visible
+        backButton.isHidden = !visible
+        titleLeading?.constant = visible ? 8 : 16
+        header.stringValue = visible ? "Keyboard Shortcuts" : "Settings"
+        shortcutsPage.contentView.scroll(to: .zero)
     }
 
     var headerHeight: CGFloat = 38
@@ -391,7 +487,11 @@ final class SettingsController: NSViewController {
     }
 
     override func cancelOperation(_ sender: Any?) {
-        onClose?()
+        if !shortcutsPage.isHidden {
+            setShortcutsVisible(false)
+        } else {
+            onClose?()
+        }
     }
 
     private func sectionTitle(_ text: String) -> NSView {

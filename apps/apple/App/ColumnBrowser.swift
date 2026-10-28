@@ -121,10 +121,9 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     }
 
     func handleKey(_ event: NSEvent, in table: ColumnTableView) -> Bool {
-        guard let index = columns.firstIndex(where: { $0.table === table }) else { return false }
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        switch event.keyCode {
-        case 124:
+        guard let index = columns.firstIndex(where: { $0.table === table }), let combo = KeyCombo(event: event) else { return false }
+        switch Shortcuts.action(for: combo, in: .columns) {
+        case .nextColumn:
             if index + 1 < columns.count {
                 let next = columns[index + 1]
                 if next.table.selectedRowIndexes.isEmpty && next.table.numberOfRows > 0 {
@@ -133,31 +132,31 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
                 view.window?.makeFirstResponder(next.table)
             }
             return true
-        case 123:
+        case .previousColumn:
             if index > 0 {
                 view.window?.makeFirstResponder(columns[index - 1].table)
                 truncate(after: index - 1)
                 selectionChanged(in: columns[index - 1])
             }
             return true
-        case 36, 76:
-            if flags.isEmpty, selectedItems.count == 1, let item = selectedItems.first {
+        default:
+            break
+        }
+        switch Shortcuts.action(for: combo, in: .browsing) {
+        case .renameItem:
+            if selectedItems.count == 1, let item = selectedItems.first {
                 beginRename(path: item.path)
                 return true
             }
-        case 49:
+        case .previewItem:
             host?.toggleQuickLook()
             return true
-        case 48:
-            if flags.isEmpty {
-                host?.focusNextPane()
-                return true
-            }
-        case 125:
-            if flags.contains(.command) {
-                host?.open(selectedItems)
-                return true
-            }
+        case .nextPane:
+            host?.focusNextPane()
+            return true
+        case .openItem:
+            host?.open(selectedItems)
+            return true
         default:
             break
         }

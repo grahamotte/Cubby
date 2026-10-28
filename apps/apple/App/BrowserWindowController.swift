@@ -382,11 +382,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-        if commandSelector == #selector(NSResponder.insertNewline(_:)) || commandSelector == #selector(NSResponder.moveDown(_:)) {
+        let action = NSApp.currentEvent.flatMap(KeyCombo.init(event:)).flatMap { Shortcuts.action(for: $0, in: .filter) }
+        if action == .leaveFilter {
             activePane.activate()
             return true
         }
-        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+        if action == .clearFilter {
             (control as? NSSearchField)?.stringValue = ""
             activePane.query = ""
             activePane.activate()
