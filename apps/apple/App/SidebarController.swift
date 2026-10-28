@@ -29,6 +29,43 @@ final class SidebarOutlineView: NSOutlineView {
     }
 }
 
+final class SidebarButton: NSView {
+    let button: NSButton
+
+    var isActive = false {
+        didSet { update() }
+    }
+
+    init(_ symbol: String, _ description: String, target: AnyObject?, action: Selector?) {
+        button = PlainButton.make(symbol, description, target: target, action: action)
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        addSubview(button)
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 28),
+            heightAnchor.constraint(equalToConstant: 26),
+            button.centerXAnchor.constraint(equalTo: centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        update()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard isActive else { return }
+        Theme.inactiveSelection.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
+    }
+
+    private func update() {
+        needsDisplay = true
+        button.contentTintColor = isActive ? Theme.sidebarText : Theme.sidebarSecondaryText
+    }
+}
+
 final class ProfileBar: NSStackView {
     func reload() {
         arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -36,21 +73,10 @@ final class ProfileBar: NSStackView {
         isHidden = state.profiles.count < 2
         guard !isHidden else { return }
         for (index, profile) in state.profiles.enumerated() {
-            let active = index == state.profile
-            let button = PlainButton.make(profile.icon, profile.name, target: self, action: #selector(select(_:)))
-            button.tag = index
-            button.contentTintColor = active ? Theme.sidebarText : Theme.sidebarSecondaryText
-            let background = FillView()
-            background.color = active ? Theme.inactiveSelection : .clear
-            background.cornerRadius = 6
-            background.addSubview(button)
-            NSLayoutConstraint.activate([
-                background.widthAnchor.constraint(equalToConstant: 28),
-                background.heightAnchor.constraint(equalToConstant: 26),
-                button.centerXAnchor.constraint(equalTo: background.centerXAnchor),
-                button.centerYAnchor.constraint(equalTo: background.centerYAnchor),
-            ])
-            addArrangedSubview(background)
+            let item = SidebarButton(profile.icon, profile.name, target: self, action: #selector(select(_:)))
+            item.button.tag = index
+            item.isActive = index == state.profile
+            addArrangedSubview(item)
         }
     }
 
@@ -66,6 +92,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     private let outlineView = SidebarOutlineView()
     private let renameField = RenameField.make()
     private let profileBar = ProfileBar()
+    private let settingsButton = SidebarButton("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
     private var currentPath: String?
@@ -101,7 +128,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
         profileBar.orientation = .horizontal
         profileBar.spacing = 2
         profileBar.translatesAutoresizingMaskIntoConstraints = false
@@ -109,22 +135,27 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         let root = FillView()
         root.color = Theme.sidebar
         root.addSubview(scroll)
-        root.addSubview(settings)
+        root.addSubview(settingsButton)
         root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: settings.topAnchor, constant: -6),
-            settings.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
-            settings.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
-            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settings.trailingAnchor, constant: 8),
+            scroll.bottomAnchor.constraint(equalTo: settingsButton.topAnchor, constant: -6),
+            settingsButton.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 11),
+            settingsButton.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settingsButton.trailingAnchor, constant: 8),
             profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
-            profileBar.centerYAnchor.constraint(equalTo: settings.centerYAnchor),
+            profileBar.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
         ])
         view = root
         reload()
         NotificationCenter.default.addObserver(self, selector: #selector(sidebarChanged), name: .sidebarChanged, object: nil)
+    }
+
+    var isSettingsActive: Bool {
+        get { settingsButton.isActive }
+        set { settingsButton.isActive = newValue }
     }
 
     static func add(_ urls: [URL]) {
