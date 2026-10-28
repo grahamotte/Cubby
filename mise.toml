@@ -352,7 +352,7 @@ usage = 'arg "<target>" help="Device to launch" choices "iphone" "phone" "ipad" 
 run = 'cd publish && ruby simulate.rb "$usage_target"'
 
 [tasks."app:debug"]
-description = "Send a command to the running Debug Cubby build, such as snap|/tmp/cubby.png (snap|PATH|Settings for another window by title), go|PATH, mode|icons, layout|grid, select|PATH, action|newFolder:, type|TEXT, or undo"
+description = "Send a command to the running Debug Cubby build, such as snap|/tmp/cubby.png (snap|PATH|Settings for another window by title), go|PATH, mode|icons, layout|grid, select|PATH[|PATH...], action|newFolder:, type|TEXT, or undo"
 usage = 'arg "<command>" help="Debug command for DebugHooks"'
 run = 'swift scripts/mise/app_debug.swift "$usage_command"'
 
