@@ -29,12 +29,70 @@ final class SidebarOutlineView: NSOutlineView {
     }
 }
 
+final class SidebarButton: NSView {
+    let button: NSButton
+
+    var isActive = false {
+        didSet { update() }
+    }
+
+    init(_ symbol: String, _ description: String, target: AnyObject?, action: Selector?) {
+        button = PlainButton.make(symbol, description, target: target, action: action)
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        addSubview(button)
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 28),
+            heightAnchor.constraint(equalToConstant: 26),
+            button.centerXAnchor.constraint(equalTo: centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        update()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard isActive else { return }
+        Theme.inactiveSelection.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
+    }
+
+    private func update() {
+        needsDisplay = true
+        button.contentTintColor = isActive ? Theme.sidebarText : Theme.sidebarSecondaryText
+    }
+}
+
+final class ProfileBar: NSStackView {
+    func reload() {
+        arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let state = AppState.shared
+        isHidden = state.profiles.count < 2
+        guard !isHidden else { return }
+        for (index, profile) in state.profiles.enumerated() {
+            let item = SidebarButton(profile.icon, profile.name, target: self, action: #selector(select(_:)))
+            item.button.tag = index
+            item.isActive = index == state.profile
+            addArrangedSubview(item)
+        }
+    }
+
+    @objc private func select(_ sender: NSButton) {
+        AppState.shared.selectProfile(sender.tag)
+    }
+}
+
 final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuItemValidation {
     static let nodeType = NSPasteboard.PasteboardType("com.grahamotte.cubby.sidebar-node")
 
     weak var delegate: SidebarControllerDelegate?
     private let outlineView = SidebarOutlineView()
     private let renameField = RenameField.make()
+    private let profileBar = ProfileBar()
+    private let settingsButton = SidebarButton("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
     private var currentPath: String?
@@ -56,7 +114,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         outlineView.delegate = self
         outlineView.target = self
         outlineView.action = #selector(clicked)
-        outlineView.doubleAction = #selector(doubleClicked)
         outlineView.registerForDraggedTypes([SidebarController.nodeType, .fileURL])
         outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
         outlineView.draggingDestinationFeedbackStyle = .sourceList
@@ -71,28 +128,34 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
-        let add = PlainButton.make("plus", "New Group", target: self, action: #selector(newGroup(_:)))
-        let buttons = NSStackView(views: [settings, add])
-        buttons.orientation = .horizontal
-        buttons.spacing = 4
-        buttons.translatesAutoresizingMaskIntoConstraints = false
+        profileBar.orientation = .horizontal
+        profileBar.spacing = 2
+        profileBar.translatesAutoresizingMaskIntoConstraints = false
 
         let root = FillView()
         root.color = Theme.sidebar
         root.addSubview(scroll)
-        root.addSubview(buttons)
+        root.addSubview(settingsButton)
+        root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
-            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
-            buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            scroll.bottomAnchor.constraint(equalTo: settingsButton.topAnchor, constant: -6),
+            settingsButton.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 11),
+            settingsButton.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settingsButton.trailingAnchor, constant: 8),
+            profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
+            profileBar.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
         ])
         view = root
         reload()
         NotificationCenter.default.addObserver(self, selector: #selector(sidebarChanged), name: .sidebarChanged, object: nil)
+    }
+
+    var isSettingsActive: Bool {
+        get { settingsButton.isActive }
+        set { settingsButton.isActive = newValue }
     }
 
     static func add(_ urls: [URL]) {
@@ -132,6 +195,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     }
 
     private func reload() {
+        profileBar.reload()
         reloading = true
         outlineView.reloadData()
         expandNodes(tree.nodes)
@@ -177,11 +241,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             }
             updateSelection()
         }
-    }
-
-    @objc private func doubleClicked() {
-        guard let node = outlineView.item(atRow: outlineView.clickedRow) as? SidebarNode, node.kind == .group else { return }
-        beginRename(node)
     }
 
     func handleKey(_ event: NSEvent) -> Bool {
