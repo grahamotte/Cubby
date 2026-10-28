@@ -7,8 +7,8 @@ final class FileTileItem: NSCollectionViewItem {
 
     private let thumbnail = ThumbnailView()
     private let label = NSTextField(wrappingLabelWithString: "")
-    private let selectionBackground = NSView()
-    private let labelBackground = NSView()
+    private let selectionBackground = FillView()
+    private let labelBackground = FillView()
     private var item: FileItem?
     private var iconSize: CGFloat = 64
     private var labelWidth: CGFloat = 0
@@ -17,10 +17,9 @@ final class FileTileItem: NSCollectionViewItem {
 
     override func loadView() {
         view = NSView()
-        selectionBackground.wantsLayer = true
-        selectionBackground.layer?.cornerRadius = 10
-        labelBackground.wantsLayer = true
-        labelBackground.layer?.cornerRadius = 4
+        selectionBackground.color = Theme.inactiveSelection
+        selectionBackground.cornerRadius = 10
+        labelBackground.cornerRadius = 4
         label.maximumNumberOfLines = 2
         label.cell?.truncatesLastVisibleLine = true
         view.addSubview(selectionBackground)
@@ -101,14 +100,8 @@ final class FileTileItem: NSCollectionViewItem {
     func updateSelection() {
         let selected = isSelected || highlightState == .forSelection
         let focused = (collectionView as? FileCollectionView)?.isFocused == true
-        var wash: CGColor?
-        var pill: CGColor?
-        view.effectiveAppearance.performAsCurrentDrawingAppearance {
-            wash = selected ? Theme.inactiveSelection.cgColor : nil
-            pill = selected ? (focused ? Theme.emphasizedSelection : Theme.inactiveSelection).cgColor : nil
-        }
-        selectionBackground.layer?.backgroundColor = wash
-        labelBackground.layer?.backgroundColor = pill
+        selectionBackground.isHidden = !selected
+        labelBackground.color = focused ? Theme.accent : Theme.inactiveSelection
         labelBackground.isHidden = !selected || !showsLabel
         let emphasized = selected && focused
         if emphasized != labelSelected {
@@ -119,7 +112,7 @@ final class FileTileItem: NSCollectionViewItem {
 
     private func updateLabel() {
         guard let item, labelWidth > 0 else { return }
-        let color: NSColor = labelSelected ? .alternateSelectedControlTextColor : .labelColor
+        let color = labelSelected ? Theme.accentText : Theme.text
         label.attributedStringValue = TileLabel.text(item.name, width: labelWidth - 10, font: FileTileItem.labelFont, color: color)
         layoutLabel()
     }

@@ -25,9 +25,14 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         window.titlebarSeparatorStyle = .none
         window.minSize = NSSize(width: 520, height: 320)
         window.isReleasedWhenClosed = false
+        window.backgroundColor = Theme.content
         super.init(window: window)
         window.delegate = self
 
+        let splitView = ThemedSplitView()
+        splitView.isVertical = true
+        splitView.dividerStyle = .thin
+        splitController.splitView = splitView
         sidebar.delegate = self
         let sidebarItem = NSSplitViewItem(viewController: sidebar)
         sidebarItem.minimumThickness = 160

@@ -5,9 +5,17 @@ final class FillView: NSView {
         didSet { needsDisplay = true }
     }
 
+    var cornerRadius: CGFloat = 0 {
+        didSet { needsDisplay = true }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         color.setFill()
-        bounds.intersection(dirtyRect).fill(using: .sourceOver)
+        if cornerRadius > 0 {
+            NSBezierPath(roundedRect: bounds, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+        } else {
+            bounds.intersection(dirtyRect).fill(using: .sourceOver)
+        }
     }
 }
 
@@ -16,7 +24,7 @@ enum PlainButton {
         let button = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: description)!, target: target, action: action)
         button.isBordered = false
         button.symbolConfiguration = .init(pointSize: 14, weight: .regular)
-        button.contentTintColor = .secondaryLabelColor
+        button.contentTintColor = Theme.icon
         button.toolTip = description
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -75,7 +83,7 @@ final class TopBar: NSView {
         activitySpinner.isDisplayedWhenStopped = false
         activitySpinner.isHidden = true
         activityLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        activityLabel.textColor = .secondaryLabelColor
+        activityLabel.textColor = Theme.secondaryText
         activityLabel.lineBreakMode = .byTruncatingTail
         activityLabel.isHidden = true
         activityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -119,7 +127,7 @@ final class TopBar: NSView {
             if index > 0 {
                 let slash = NSTextField(labelWithString: "/")
                 slash.font = .systemFont(ofSize: 13)
-                slash.textColor = .tertiaryLabelColor
+                slash.textColor = Theme.tertiaryText
                 slash.setContentCompressionResistancePriority(.required, for: .horizontal)
                 crumbs.addArrangedSubview(slash)
             }
@@ -129,7 +137,7 @@ final class TopBar: NSView {
             button.identifier = NSUserInterfaceItemIdentifier(crumbPath)
             button.attributedTitle = NSAttributedString(string: name, attributes: [
                 .font: NSFont.systemFont(ofSize: 13, weight: isLast ? .medium : .regular),
-                .foregroundColor: isLast ? NSColor.labelColor : NSColor.secondaryLabelColor,
+                .foregroundColor: isLast ? Theme.text : Theme.secondaryText,
             ])
             button.cell?.lineBreakMode = .byTruncatingTail
             button.toolTip = crumbPath

@@ -12,7 +12,8 @@ final class PreviewView: NSView {
         super.init(frame: frame)
         imageView.translatesAutoresizingMaskIntoConstraints = false
         name.font = .systemFont(ofSize: 13, weight: .semibold)
-        info.textColor = .secondaryLabelColor
+        name.textColor = Theme.text
+        info.textColor = Theme.secondaryText
         info.font = .systemFont(ofSize: 11)
         for label in [name, info] {
             label.alignment = .center

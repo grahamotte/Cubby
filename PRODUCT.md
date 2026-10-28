@@ -35,7 +35,7 @@ A personal, opinionated Finder replacement inspired by QSpace Pro, but deliberat
 - Per-folder views follow a folder across renames and moves.
 - Must stay fast: per-item work is lazy and per-row drawing is cheap; no per-row visual effects that cost time on huge folders.
 - Keep it simple and light on options: prefer too few settings to too many.
-- Planned: user-selectable themes, each with a light and a dark variant that follows the system appearance. Not built yet; the current UI has one built-in light/dark palette.
+- Themes: Settings > Appearance picks a theme and a color scheme (System, Light, Dark). Each theme has a light and a dark variant that follows the appearance; built-ins are Workbench plus T3 Code's themes, and extra themes are JSON files in `~/.config/cubby/themes`.
 
 ## Evidence on Hand
 

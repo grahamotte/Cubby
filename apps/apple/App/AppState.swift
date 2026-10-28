@@ -5,6 +5,7 @@ extension Notification.Name {
     static let showHiddenChanged = Notification.Name("CubbyShowHiddenChanged")
     static let listColumnsChanged = Notification.Name("CubbyListColumnsChanged")
     static let configChanged = Notification.Name("CubbyConfigChanged")
+    static let themeChanged = Notification.Name("CubbyThemeChanged")
 }
 
 @MainActor
@@ -18,11 +19,13 @@ final class AppState {
     private(set) var config: AppConfig
     private(set) var sidebar: SidebarTree
     private(set) var configError: String?
+    private(set) var themes: ThemeLibrary
     var listColumns: [SessionState.Column] = []
     var cutURLs: [URL] = []
     var cutChangeCount = -1
     private var saveWorkItem: DispatchWorkItem?
     private var configWatchers: [PathWatcher] = []
+    private var themeWatchers: [PathWatcher] = []
 
     private init() {
         undoManager.groupsByEvent = false
@@ -36,10 +39,13 @@ final class AppState {
             configError = message
         }
         sidebar = SidebarTree(nodes: config.sidebar)
+        try? FileManager.default.createDirectory(at: paths.themesDirectory, withIntermediateDirectories: true)
+        themes = ThemeLibrary(directory: paths.themesDirectory)
         folderViews.prune { FileManager.default.fileExists(atPath: $0) }
         configWatchers = [paths.configDirectory.path, paths.configFile.path].map { path in
             PathWatcher(path: path) { [weak self] in self?.reloadConfigIfChanged() }
         }
+        watchThemes()
     }
 
     var showHiddenFiles: Bool {
@@ -64,6 +70,52 @@ final class AppState {
         set {
             config.terminal = newValue
             saveConfig()
+        }
+    }
+
+    var colorScheme: ColorScheme {
+        get { config.appearance }
+        set {
+            config.appearance = newValue
+            saveConfig()
+            themeDidChange()
+        }
+    }
+
+    var theme: ThemeDefinition {
+        themes.theme(id: config.theme)
+    }
+
+    func selectTheme(_ id: String) {
+        config.theme = id
+        saveConfig()
+        themeDidChange()
+    }
+
+    func duplicateTheme(_ theme: ThemeDefinition) throws -> URL {
+        let copy = try themes.duplicate(theme, into: paths.themesDirectory)
+        reloadThemes()
+        selectTheme(copy.id)
+        return paths.themesDirectory.appending(path: "\(copy.id).json")
+    }
+
+    func reloadThemes() {
+        let loaded = ThemeLibrary(directory: paths.themesDirectory)
+        watchThemes()
+        guard loaded != themes else { return }
+        themes = loaded
+        themeDidChange()
+    }
+
+    func themeDidChange() {
+        Theme.apply(theme, scheme: config.appearance)
+        NotificationCenter.default.post(name: .themeChanged, object: nil)
+    }
+
+    private func watchThemes() {
+        let directory = paths.themesDirectory
+        themeWatchers = ([directory] + ThemeLibrary.files(in: directory)).map { url in
+            PathWatcher(path: url.path) { [weak self] in self?.reloadThemes() }
         }
     }
 
@@ -115,6 +167,7 @@ final class AppState {
         do {
             let loaded = try JSONDecoder().decode(AppConfig.self, from: data)
             let hiddenChanged = loaded.showHiddenFiles != config.showHiddenFiles
+            let themeChanged = loaded.theme != config.theme || loaded.appearance != config.appearance
             config = loaded
             configError = nil
             sidebar = SidebarTree(nodes: loaded.sidebar)
@@ -122,6 +175,9 @@ final class AppState {
             NotificationCenter.default.post(name: .configChanged, object: nil)
             if hiddenChanged {
                 NotificationCenter.default.post(name: .showHiddenChanged, object: nil)
+            }
+            if themeChanged {
+                themeDidChange()
             }
         } catch {
             configError = ConfigStore.describe(error)

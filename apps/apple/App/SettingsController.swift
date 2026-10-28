@@ -11,6 +11,61 @@ final class CardView: NSView {
     }
 }
 
+final class ThemeTile: NSView {
+    let theme: ThemeDefinition
+    var onSelect: ((ThemeDefinition) -> Void)?
+
+    var isSelected = false {
+        didSet { needsDisplay = true }
+    }
+
+    init(theme: ThemeDefinition) {
+        self.theme = theme
+        super.init(frame: .zero)
+        toolTip = theme.name
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(theme.name)
+        heightAnchor.constraint(equalToConstant: 104).isActive = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 10, yRadius: 10)
+        Theme.card.setFill()
+        path.fill()
+        (isSelected ? Theme.accent : Theme.divider).setStroke()
+        path.lineWidth = isSelected ? 2 : 1
+        path.stroke()
+        let side: CGFloat = 40
+        let gap: CGFloat = 12
+        for (index, palette) in [theme.light, theme.dark].enumerated() {
+            let rect = NSRect(x: (bounds.midX - side - gap / 2 + CGFloat(index) * (side + gap)).rounded(), y: bounds.maxY - 16 - side, width: side, height: side)
+            let orb = NSBezierPath(ovalIn: rect)
+            NSGradient(colors: [Theme.nsColor(palette[.content]), Theme.nsColor(palette[.accent])])?.draw(in: orb, relativeCenterPosition: NSPoint(x: -0.4, y: 0.4))
+            Theme.divider.setStroke()
+            orb.lineWidth = 1
+            orb.stroke()
+        }
+        let name = NSAttributedString(string: theme.name, attributes: [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: Theme.text,
+        ])
+        name.draw(with: NSRect(x: 14, y: 14, width: bounds.width - 28, height: name.size().height), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onSelect?(theme)
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onSelect?(theme)
+        return true
+    }
+}
+
 final class FocusableView: NSView {
     override var acceptsFirstResponder: Bool { true }
 }
@@ -28,6 +83,10 @@ final class SettingsController: NSViewController {
         ("WezTerm", "com.github.wez.wezterm"),
     ]
 
+    private let schemeControl = NSSegmentedControl(labels: ColorScheme.allCases.map(\.title), trackingMode: .selectOne, target: nil, action: nil)
+    private let themeGrid = NSStackView()
+    private let themeErrors = NSTextField(wrappingLabelWithString: "")
+    private var shownThemes: ThemeLibrary?
     private let hiddenSwitch = NSSwitch()
     private let terminalPopup = SettingsController.popup()
     private let modePopup = SettingsController.popup()
@@ -40,7 +99,7 @@ final class SettingsController: NSViewController {
     init() {
         super.init(nibName: nil, bundle: nil)
         let center = NotificationCenter.default
-        observers = [.configChanged, .showHiddenChanged].map { name in
+        observers = [.configChanged, .showHiddenChanged, .themeChanged].map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
@@ -59,11 +118,21 @@ final class SettingsController: NSViewController {
         let popup = NSPopUpButton(frame: .zero, pullsDown: false)
         popup.isBordered = false
         popup.font = .systemFont(ofSize: 13)
-        popup.contentTintColor = .secondaryLabelColor
+        popup.contentTintColor = Theme.secondaryText
         return popup
     }
 
     override func loadView() {
+        schemeControl.controlSize = .small
+        schemeControl.selectedSegmentBezelColor = Theme.accent
+        schemeControl.target = self
+        schemeControl.action = #selector(schemeChanged(_:))
+        themeGrid.orientation = .vertical
+        themeGrid.alignment = .leading
+        themeGrid.spacing = 10
+        themeErrors.font = .systemFont(ofSize: 12)
+        themeErrors.textColor = Theme.warning
+
         hiddenSwitch.controlSize = .small
         hiddenSwitch.target = self
         hiddenSwitch.action = #selector(hiddenChanged(_:))
@@ -77,53 +146,70 @@ final class SettingsController: NSViewController {
         orderPopup.addItems(withTitles: ["Ascending", "Descending"])
 
         iconSlider.controlSize = .small
+        iconSlider.trackFillColor = Theme.accent
         iconSlider.isContinuous = true
         iconSlider.target = self
         iconSlider.action = #selector(defaultViewChanged(_:))
         iconSlider.widthAnchor.constraint(equalToConstant: 140).isActive = true
         iconValue.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
-        iconValue.textColor = .secondaryLabelColor
+        iconValue.textColor = Theme.secondaryText
         iconValue.alignment = .right
         iconValue.widthAnchor.constraint(equalToConstant: 44).isActive = true
         let iconControl = NSStackView(views: [iconValue, iconSlider])
         iconControl.spacing = 8
 
-        let openConfig = NSButton(title: "Open config.json", target: nil, action: #selector(AppDelegate.openConfigFile(_:)))
-        openConfig.isBordered = false
-        openConfig.attributedTitle = NSAttributedString(string: "Open config.json", attributes: [
-            .font: NSFont.systemFont(ofSize: 12, weight: .medium),
-            .foregroundColor: NSColor.controlAccentColor,
-        ])
+        let openConfig = link("Open config.json", target: nil, action: #selector(AppDelegate.openConfigFile(_:)))
         let path = NSTextField(labelWithString: (AppState.shared.paths.configFile.path as NSString).abbreviatingWithTildeInPath)
         path.font = .systemFont(ofSize: 12)
-        path.textColor = .tertiaryLabelColor
+        path.textColor = Theme.tertiaryText
         path.lineBreakMode = .byTruncatingMiddle
         let footer = NSStackView(views: [path, openConfig])
         footer.spacing = 10
 
+        let themesTitle = sectionTitle("Themes")
+        themesTitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let themesHeader = NSStackView(views: [
+            themesTitle,
+            link("Duplicate", target: self, action: #selector(duplicateTheme(_:))),
+            link("Open Themes Folder", target: self, action: #selector(openThemesFolder(_:))),
+        ])
+        themesHeader.spacing = 14
+
+        let appearanceCard = card([
+            row("Color scheme", "Follow the system, or always use light or dark.", schemeControl),
+        ])
+        let generalCard = card([
+            row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
+            row("Terminal", "The app Open in Terminal uses.", terminalPopup),
+        ])
+        let defaultViewCard = card([
+            row("View", "How folders you haven't customized are shown.", modePopup),
+            row("Sort by", "The column folders are sorted by.", sortPopup),
+            row("Order", "Sort direction.", orderPopup),
+            row("Icon size", "Icon and gallery thumbnail size.", iconControl),
+        ])
         let sections: [NSView] = [
+            sectionTitle("Appearance"),
+            appearanceCard,
+            themesHeader,
+            themeGrid,
+            themeErrors,
             sectionTitle("General"),
-            card([
-                row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
-                row("Terminal", "The app Open in Terminal uses.", terminalPopup),
-            ]),
+            generalCard,
             sectionTitle("Default view"),
-            card([
-                row("View", "How folders you haven't customized are shown.", modePopup),
-                row("Sort by", "The column folders are sorted by.", sortPopup),
-                row("Order", "Sort direction.", orderPopup),
-                row("Icon size", "Icon and gallery thumbnail size.", iconControl),
-            ]),
+            defaultViewCard,
             footer,
         ]
         let stack = NSStackView(views: sections)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
-        stack.setCustomSpacing(28, after: sections[1])
-        stack.setCustomSpacing(16, after: sections[3])
+        for view in [appearanceCard, themeGrid, themeErrors, generalCard] {
+            stack.setCustomSpacing(28, after: view)
+        }
+        stack.setCustomSpacing(16, after: defaultViewCard)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        for view in sections where view is CardView {
+        for view in sections where view is CardView || view === themesHeader || view === themeGrid || view === themeErrors {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
@@ -140,6 +226,7 @@ final class SettingsController: NSViewController {
 
         let header = NSTextField(labelWithString: "Settings")
         header.font = .systemFont(ofSize: 13, weight: .medium)
+        header.textColor = Theme.text
         header.translatesAutoresizingMaskIntoConstraints = false
         let close = PlainButton.make("xmark", "Close Settings", target: self, action: #selector(close(_:)))
 
@@ -184,8 +271,40 @@ final class SettingsController: NSViewController {
     private func sectionTitle(_ text: String) -> NSView {
         let label = NSTextField(labelWithString: text)
         label.font = .systemFont(ofSize: 13, weight: .semibold)
-        label.textColor = .secondaryLabelColor
+        label.textColor = Theme.secondaryText
         return label
+    }
+
+    private func link(_ title: String, target: AnyObject?, action: Selector) -> NSButton {
+        let button = NSButton(title: title, target: target, action: action)
+        button.isBordered = false
+        button.attributedTitle = NSAttributedString(string: title, attributes: [
+            .font: NSFont.systemFont(ofSize: 12, weight: .medium),
+            .foregroundColor: Theme.accent,
+        ])
+        return button
+    }
+
+    private func rebuildThemeGrid(_ library: ThemeLibrary) {
+        themeGrid.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let columns = 3
+        for start in stride(from: 0, to: library.themes.count, by: columns) {
+            var views: [NSView] = library.themes[start..<min(start + columns, library.themes.count)].map { theme in
+                let tile = ThemeTile(theme: theme)
+                tile.onSelect = { AppState.shared.selectTheme($0.id) }
+                return tile
+            }
+            while views.count < columns {
+                views.append(NSView())
+            }
+            let row = NSStackView(views: views)
+            row.distribution = .fillEqually
+            row.spacing = 10
+            themeGrid.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: themeGrid.widthAnchor).isActive = true
+        }
+        themeErrors.stringValue = library.errors.joined(separator: "\n")
+        themeErrors.isHidden = library.errors.isEmpty
     }
 
     private func card(_ rows: [NSView]) -> NSView {
@@ -221,9 +340,10 @@ final class SettingsController: NSViewController {
     private func row(_ title: String, _ detail: String, _ control: NSView) -> NSView {
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = Theme.text
         let detailLabel = NSTextField(labelWithString: detail)
         detailLabel.font = .systemFont(ofSize: 12)
-        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.textColor = Theme.secondaryText
         detailLabel.lineBreakMode = .byTruncatingTail
         detailLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let text = NSStackView(views: [titleLabel, detailLabel])
@@ -250,6 +370,17 @@ final class SettingsController: NSViewController {
 
     func refresh() {
         let state = AppState.shared
+        schemeControl.selectedSegment = ColorScheme.allCases.firstIndex(of: state.colorScheme) ?? 0
+        if shownThemes != state.themes {
+            shownThemes = state.themes
+            rebuildThemeGrid(state.themes)
+        }
+        let selectedTheme = state.theme.id
+        for case let row as NSStackView in themeGrid.arrangedSubviews {
+            for case let tile as ThemeTile in row.arrangedSubviews {
+                tile.isSelected = tile.theme.id == selectedTheme
+            }
+        }
         hiddenSwitch.state = state.showHiddenFiles ? .on : .off
         let view = state.config.defaultView
         modePopup.selectItem(at: ViewMode.allCases.firstIndex(of: view.mode) ?? 0)
@@ -273,6 +404,28 @@ final class SettingsController: NSViewController {
             terminalPopup.lastItem?.representedObject = bundle
         }
         terminalPopup.selectItem(at: terminalPopup.indexOfItem(withRepresentedObject: selected?.1 ?? current))
+    }
+
+    @objc private func schemeChanged(_ sender: NSSegmentedControl) {
+        AppState.shared.colorScheme = ColorScheme.allCases[max(sender.selectedSegment, 0)]
+    }
+
+    @objc private func duplicateTheme(_ sender: Any?) {
+        let state = AppState.shared
+        do {
+            AppDelegate.openInTextEditor(try state.duplicateTheme(state.theme))
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    @objc private func openThemesFolder(_ sender: Any?) {
+        let state = AppState.shared
+        state.reloadThemes()
+        guard let controller = view.window?.windowController as? BrowserWindowController else { return }
+        controller.closeSettings()
+        controller.activePane.navigate(to: state.paths.themesDirectory.path)
+        controller.activePane.activate()
     }
 
     @objc private func hiddenChanged(_ sender: NSSwitch) {

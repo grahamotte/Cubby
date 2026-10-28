@@ -1,26 +1,74 @@
 import AppKit
 
 enum Theme {
-    static let content = dynamic(light: NSColor(srgbRed: 0.988, green: 0.988, blue: 0.984, alpha: 1), dark: NSColor(srgbRed: 0.118, green: 0.122, blue: 0.129, alpha: 1))
-    static let sidebar = dynamic(light: NSColor(srgbRed: 0.945, green: 0.945, blue: 0.937, alpha: 1), dark: NSColor(srgbRed: 0.090, green: 0.094, blue: 0.102, alpha: 1))
-    static let card = dynamic(light: .white, dark: NSColor(srgbRed: 0.157, green: 0.161, blue: 0.169, alpha: 1))
-    static let divider = dynamic(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.07))
-    static let hover = dynamic(light: NSColor(white: 0, alpha: 0.04), dark: NSColor(white: 1, alpha: 0.05))
-    static let inactiveSelection = dynamic(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.09))
+    nonisolated(unsafe) private(set) static var definition = ThemeLibrary.builtIn[0]
 
-    static var selection: NSColor {
-        NSColor.controlAccentColor.withAlphaComponent(0.2)
+    static let content = color(.content)
+    static let sidebar = color(.sidebar)
+    static let card = color(.card)
+    static let divider = color(.divider)
+    static let text = color(.text)
+    static let secondaryText = color(.secondaryText)
+    static let tertiaryText = color(.tertiaryText)
+    static let icon = color(.icon)
+    static let sidebarText = color(.sidebarText)
+    static let sidebarSecondaryText = color(.sidebarSecondaryText)
+    static let accent = color(.accent)
+    static let accentText = color(.accentText)
+    static let warning = color(.warning)
+
+    static let selection = NSColor(name: nil) { appearance in
+        resolve(.accent, appearance).withAlphaComponent(0.2)
     }
 
-    static var emphasizedSelection: NSColor {
-        NSColor.controlAccentColor
+    static let inactiveSelection = NSColor(name: nil) { appearance in
+        let text = resolve(.text, appearance)
+        return text.withAlphaComponent(text.alphaComponent * 0.1)
     }
 
-    private static func dynamic(light: NSColor, dark: NSColor) -> NSColor {
-        NSColor(name: nil) { appearance in
-            appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+    @MainActor
+    static func apply(_ theme: ThemeDefinition, scheme: ColorScheme) {
+        definition = theme
+        switch scheme {
+        case .system: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+        for window in NSApp.windows {
+            if let frame = window.contentView?.superview {
+                refresh(frame)
+            }
         }
     }
+
+    static func nsColor(_ color: ThemeColor) -> NSColor {
+        switch color {
+        case .systemAccent:
+            return .controlAccentColor
+        case .rgba(let red, let green, let blue, let alpha):
+            return NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
+        }
+    }
+
+    private static func color(_ role: ThemeRole) -> NSColor {
+        NSColor(name: nil) { appearance in resolve(role, appearance) }
+    }
+
+    private static func resolve(_ role: ThemeRole, _ appearance: NSAppearance) -> NSColor {
+        let dark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return nsColor(definition.palette(dark: dark)[role])
+    }
+
+    @MainActor
+    private static func refresh(_ view: NSView) {
+        view.needsDisplay = true
+        view.needsLayout = true
+        view.subviews.forEach(refresh)
+    }
+}
+
+final class ThemedSplitView: NSSplitView {
+    override var dividerColor: NSColor { Theme.divider }
 }
 
 final class RoundedRowView: NSTableRowView {
@@ -64,10 +112,10 @@ final class QuietHeaderView: NSTableHeaderView {
             let font = NSFont.systemFont(ofSize: 11, weight: .medium)
             let title = NSAttributedString(string: column.title, attributes: [
                 .font: font,
-                .foregroundColor: active ? NSColor.labelColor : NSColor.secondaryLabelColor,
+                .foregroundColor: active ? Theme.text : Theme.secondaryText,
             ])
             let size = title.size()
-            let configuration = NSImage.SymbolConfiguration(pointSize: 8, weight: .semibold).applying(.init(paletteColors: [.secondaryLabelColor]))
+            let configuration = NSImage.SymbolConfiguration(pointSize: 8, weight: .semibold).applying(.init(paletteColors: [Theme.secondaryText]))
             let chevron = active ? NSImage(systemSymbolName: ascending ? "chevron.up" : "chevron.down", accessibilityDescription: nil)?.withSymbolConfiguration(configuration) : nil
             let chevronWidth = chevron.map { $0.size.width + 4 } ?? 0
             var inner = rect.insetBy(dx: 8, dy: 0)
