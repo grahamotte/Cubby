@@ -169,6 +169,7 @@ final class TopBar: NSView {
             let item = NSMenuItem(title: mode.title, action: #selector(PaneController.setViewMode(_:)), keyEquivalent: "")
             item.tag = index
             item.image = NSImage(systemSymbolName: mode.symbolName, accessibilityDescription: nil)
+            item.preferredImageVisibility = .visible
             menu.addItem(item)
         }
         popUp(menu, from: sender)
@@ -180,6 +181,7 @@ final class TopBar: NSView {
             let item = NSMenuItem(title: layout.title, action: #selector(BrowserWindowController.changeLayout(_:)), keyEquivalent: "")
             item.tag = index
             item.image = NSImage(systemSymbolName: layout.symbolName, accessibilityDescription: nil)
+            item.preferredImageVisibility = .visible
             menu.addItem(item)
         }
         popUp(menu, from: sender)
