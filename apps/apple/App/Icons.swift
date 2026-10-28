@@ -35,28 +35,42 @@ final class IconCache {
     }
 }
 
+final class Thumbnail {
+    let image: NSImage
+    let rounded: Bool
+
+    init(image: NSImage, rounded: Bool) {
+        self.image = image
+        self.rounded = rounded
+    }
+}
+
 @MainActor
 final class ThumbnailCache {
     static let shared = ThumbnailCache()
 
-    private let cache = NSCache<NSString, NSImage>()
+    private let cache = NSCache<NSString, Thumbnail>()
     private var inFlight: [NSString: QLThumbnailGenerator.Request] = [:]
-    private var waiters: [NSString: [(NSImage) -> Void]] = [:]
+    private var waiters: [NSString: [(Thumbnail) -> Void]] = [:]
 
     init() {
         cache.countLimit = 1500
-        cache.totalCostLimit = 300 * 1024 * 1024
+        cache.totalCostLimit = 400 * 1024 * 1024
     }
 
     static func wantsThumbnail(_ item: FileItem) -> Bool {
         !item.isFolder && !item.isSymlink && item.size > 0
     }
 
-    func cached(for item: FileItem, size: CGFloat) -> NSImage? {
+    static func requestSize(_ size: CGFloat) -> CGFloat {
+        (size / 64).rounded(.up) * 64
+    }
+
+    func cached(for item: FileItem, size: CGFloat) -> Thumbnail? {
         cache.object(forKey: key(item, size))
     }
 
-    func thumbnail(for item: FileItem, size: CGFloat, scale: CGFloat, completion: @escaping (NSImage) -> Void) {
+    func thumbnail(for item: FileItem, size: CGFloat, scale: CGFloat, completion: @escaping (Thumbnail) -> Void) {
         guard ThumbnailCache.wantsThumbnail(item) else { return }
         let key = key(item, size)
         if let cached = cache.object(forKey: key) {
@@ -65,18 +79,21 @@ final class ThumbnailCache {
         }
         waiters[key, default: []].append(completion)
         guard inFlight[key] == nil else { return }
-        let request = QLThumbnailGenerator.Request(fileAt: item.url, size: CGSize(width: size, height: size), scale: scale, representationTypes: [.icon, .thumbnail])
+        let side = ThumbnailCache.requestSize(size)
+        let request = QLThumbnailGenerator.Request(fileAt: item.url, size: CGSize(width: side, height: side), scale: scale, representationTypes: [.icon, .thumbnail])
         request.iconMode = item.isPackage
         inFlight[key] = request
         QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { representation, _ in
             let image = representation?.nsImage
+            let rounded = representation?.type == .thumbnail
             DispatchQueue.main.async {
                 self.inFlight[key] = nil
                 let completions = self.waiters.removeValue(forKey: key) ?? []
                 guard let image else { return }
+                let thumbnail = Thumbnail(image: image, rounded: rounded)
                 let pixels = Int(image.size.width * image.size.height * scale * scale * 4)
-                self.cache.setObject(image, forKey: key, cost: pixels)
-                completions.forEach { $0(image) }
+                self.cache.setObject(thumbnail, forKey: key, cost: pixels)
+                completions.forEach { $0(thumbnail) }
             }
         }
     }
@@ -90,6 +107,6 @@ final class ThumbnailCache {
     }
 
     private func key(_ item: FileItem, _ size: CGFloat) -> NSString {
-        "\(item.path)|\(item.modified)|\(Int(size))" as NSString
+        "\(item.path)|\(item.modified)|\(Int(ThumbnailCache.requestSize(size)))" as NSString
     }
 }
