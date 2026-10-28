@@ -17,7 +17,6 @@ final class AppState {
     let folderViews: FolderViewStore
     let undoManager = UndoManager()
     private(set) var config: AppConfig
-    private(set) var sidebar: SidebarTree
     private(set) var configError: String?
     private(set) var themes: ThemeLibrary
     var listColumns: [SessionState.Column] = []
@@ -38,7 +37,6 @@ final class AppState {
             config = fallback
             configError = message
         }
-        sidebar = SidebarTree(nodes: config.sidebar)
         try? FileManager.default.createDirectory(at: paths.themesDirectory, withIntermediateDirectories: true)
         themes = ThemeLibrary(directory: paths.themesDirectory)
         folderViews.prune { FileManager.default.fileExists(atPath: $0) }
@@ -112,8 +110,50 @@ final class AppState {
         }
     }
 
+    var sidebar: SidebarTree {
+        config.sidebar
+    }
+
+    var profiles: [SidebarProfile] {
+        config.profiles
+    }
+
+    var profile: Int {
+        config.profile
+    }
+
+    func selectProfile(_ index: Int) {
+        if config.selectProfile(index) {
+            sidebarDidChange()
+        }
+    }
+
+    @discardableResult
+    func addProfile() -> Int {
+        let index = config.addProfile()
+        sidebarDidChange()
+        return index
+    }
+
+    func removeProfile(at index: Int) {
+        if config.removeProfile(at: index) {
+            sidebarDidChange()
+        }
+    }
+
+    func renameProfile(at index: Int, to name: String) {
+        if config.renameProfile(at: index, to: name) {
+            sidebarDidChange()
+        }
+    }
+
+    func setProfileIcon(at index: Int, to icon: String) {
+        if config.setProfileIcon(at: index, to: icon) {
+            sidebarDidChange()
+        }
+    }
+
     func sidebarDidChange() {
-        config.sidebar = sidebar.nodes
         saveConfig()
         NotificationCenter.default.post(name: .sidebarChanged, object: nil)
     }
@@ -137,7 +177,7 @@ final class AppState {
     }
 
     func folderMoved(from oldPath: String, to newPath: String) {
-        if sidebar.updateFolders(movedFrom: oldPath, to: newPath) {
+        if config.updateFolders(movedFrom: oldPath, to: newPath) {
             sidebarDidChange()
         }
     }
@@ -163,7 +203,6 @@ final class AppState {
             let themeChanged = loaded.theme != config.theme || loaded.appearance != config.appearance
             config = loaded
             configError = nil
-            sidebar = SidebarTree(nodes: loaded.sidebar)
             NotificationCenter.default.post(name: .sidebarChanged, object: nil)
             NotificationCenter.default.post(name: .configChanged, object: nil)
             if hiddenChanged {
