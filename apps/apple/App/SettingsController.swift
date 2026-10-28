@@ -66,6 +66,139 @@ final class ThemeTile: NSView {
     }
 }
 
+final class ProfileRow: NSView {
+    let index: Int
+    let iconButton = PlainButton.make(SidebarProfile.icons[0], "Change Icon", target: nil, action: nil)
+    let nameField = NSTextField()
+    let deleteButton = PlainButton.make("trash", "Delete Profile", target: nil, action: nil)
+    private var popover: NSPopover?
+
+    init(index: Int) {
+        self.index = index
+        super.init(frame: .zero)
+        iconButton.target = self
+        iconButton.action = #selector(pickIcon(_:))
+        deleteButton.target = self
+        deleteButton.action = #selector(delete(_:))
+        nameField.isBordered = false
+        nameField.drawsBackground = false
+        nameField.focusRingType = .none
+        nameField.font = .systemFont(ofSize: 13, weight: .medium)
+        nameField.textColor = Theme.text
+        nameField.lineBreakMode = .byTruncatingTail
+        nameField.cell?.isScrollable = true
+        nameField.cell?.sendsActionOnEndEditing = true
+        nameField.target = self
+        nameField.action = #selector(commitName(_:))
+        nameField.setAccessibilityLabel("Profile Name")
+        let iconBackground = FillView()
+        iconBackground.color = Theme.inactiveSelection
+        iconBackground.cornerRadius = 6
+        iconBackground.addSubview(iconButton)
+        for view in [iconBackground, nameField, deleteButton] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(view)
+        }
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 48),
+            iconBackground.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            iconBackground.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconBackground.widthAnchor.constraint(equalToConstant: 30),
+            iconBackground.heightAnchor.constraint(equalToConstant: 28),
+            iconButton.centerXAnchor.constraint(equalTo: iconBackground.centerXAnchor),
+            iconButton.centerYAnchor.constraint(equalTo: iconBackground.centerYAnchor),
+            nameField.leadingAnchor.constraint(equalTo: iconBackground.trailingAnchor, constant: 10),
+            nameField.centerYAnchor.constraint(equalTo: centerYAnchor),
+            nameField.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -12),
+            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            deleteButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    func update(_ profile: SidebarProfile, canDelete: Bool) {
+        iconButton.image = NSImage(systemSymbolName: profile.icon, accessibilityDescription: "Change Icon")
+        if nameField.currentEditor() == nil {
+            nameField.stringValue = profile.name
+        }
+        deleteButton.isEnabled = canDelete
+        deleteButton.alphaValue = canDelete ? 1 : 0.35
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        guard nameField.currentEditor() != nil else { return super.cancelOperation(sender) }
+        nameField.abortEditing()
+        if AppState.shared.profiles.indices.contains(index) {
+            nameField.stringValue = AppState.shared.profiles[index].name
+        }
+    }
+
+    @objc private func commitName(_ sender: NSTextField) {
+        let state = AppState.shared
+        state.renameProfile(at: index, to: sender.stringValue)
+        if state.profiles.indices.contains(index) {
+            sender.stringValue = state.profiles[index].name
+        }
+    }
+
+    @objc private func pickIcon(_ sender: NSButton) {
+        let current = AppState.shared.profiles.indices.contains(index) ? AppState.shared.profiles[index].icon : ""
+        let columns = 5
+        let rows = stride(from: 0, to: SidebarProfile.icons.count, by: columns).map { start in
+            SidebarProfile.icons[start..<min(start + columns, SidebarProfile.icons.count)].map { icon -> NSView in
+                let button = PlainButton.make(icon, icon, target: self, action: #selector(choseIcon(_:)))
+                button.identifier = NSUserInterfaceItemIdentifier(icon)
+                button.contentTintColor = icon == current ? Theme.accent : Theme.icon
+                return button
+            }
+        }
+        let grid = NSGridView(views: rows)
+        grid.rowSpacing = 6
+        grid.columnSpacing = 6
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        let content = NSView()
+        content.addSubview(grid)
+        NSLayoutConstraint.activate([
+            grid.topAnchor.constraint(equalTo: content.topAnchor, constant: 10),
+            grid.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -10),
+            grid.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 10),
+            grid.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -10),
+        ])
+        let controller = NSViewController()
+        controller.view = content
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentViewController = controller
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .maxY)
+        self.popover = popover
+    }
+
+    @objc private func choseIcon(_ sender: NSButton) {
+        guard let icon = sender.identifier?.rawValue else { return }
+        popover?.close()
+        popover = nil
+        AppState.shared.setProfileIcon(at: index, to: icon)
+    }
+
+    @objc private func delete(_ sender: Any?) {
+        let state = AppState.shared
+        guard state.profiles.indices.contains(index) else { return }
+        let profile = state.profiles[index]
+        if !profile.tree.nodes.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "Delete the profile “\(profile.name)”?"
+            alert.informativeText = "Its groups and folders will be removed from the sidebar. Nothing on disk is deleted."
+            alert.addButton(withTitle: "Delete")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        state.removeProfile(at: index)
+    }
+}
+
 final class FocusableView: NSView {
     override var acceptsFirstResponder: Bool { true }
 }
@@ -84,6 +217,7 @@ final class SettingsController: NSViewController {
     ]
 
     private let schemePopup = SettingsController.popup()
+    private let profileList = NSStackView()
     private let themeGrid = NSStackView()
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
     private var shownThemes: ThemeLibrary?
@@ -99,7 +233,7 @@ final class SettingsController: NSViewController {
     init() {
         super.init(nibName: nil, bundle: nil)
         let center = NotificationCenter.default
-        observers = [.configChanged, .showHiddenChanged, .themeChanged].map { name in
+        observers = [.configChanged, .showHiddenChanged, .themeChanged, .sidebarChanged].map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
@@ -126,6 +260,8 @@ final class SettingsController: NSViewController {
         schemePopup.addItems(withTitles: ColorScheme.allCases.map(\.title))
         schemePopup.target = self
         schemePopup.action = #selector(schemeChanged(_:))
+        profileList.orientation = .vertical
+        profileList.spacing = 0
         themeGrid.orientation = .vertical
         themeGrid.alignment = .leading
         themeGrid.spacing = 10
@@ -178,7 +314,20 @@ final class SettingsController: NSViewController {
             row("Order", "Sort direction.", orderPopup),
             row("Icon size", "Icon and gallery thumbnail size.", iconControl),
         ])
+        let profilesCard = CardView()
+        profileList.translatesAutoresizingMaskIntoConstraints = false
+        profilesCard.addSubview(profileList)
+        NSLayoutConstraint.activate([
+            profileList.topAnchor.constraint(equalTo: profilesCard.topAnchor),
+            profileList.leadingAnchor.constraint(equalTo: profilesCard.leadingAnchor),
+            profileList.trailingAnchor.constraint(equalTo: profilesCard.trailingAnchor),
+            profileList.bottomAnchor.constraint(equalTo: profilesCard.bottomAnchor),
+        ])
+        let addProfile = link("Add Profile", target: self, action: #selector(addProfile(_:)))
+        let profilesTitle = NSStackView(views: [sectionTitle("Profiles"), NSView(), addProfile])
         let sections: [NSView] = [
+            profilesTitle,
+            profilesCard,
             sectionTitle("Appearance"),
             appearanceCard,
             sectionTitle("Theme"),
@@ -194,12 +343,12 @@ final class SettingsController: NSViewController {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
-        for view in [appearanceCard, themeGrid, themeErrors, generalCard] {
+        for view in [profilesCard, appearanceCard, themeGrid, themeErrors, generalCard] {
             stack.setCustomSpacing(28, after: view)
         }
         stack.setCustomSpacing(16, after: defaultViewCard)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        for view in sections where view is CardView || view === themeGrid || view === themeErrors {
+        for view in sections where view is CardView || view === themeGrid || view === themeErrors || view === profilesTitle {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
@@ -297,6 +446,36 @@ final class SettingsController: NSViewController {
         themeErrors.isHidden = library.errors.isEmpty
     }
 
+    private func refreshProfiles(_ state: AppState) {
+        let profiles = state.profiles
+        let rows = profileList.arrangedSubviews.compactMap { $0 as? ProfileRow }
+        if rows.count != profiles.count {
+            profileList.arrangedSubviews.forEach { $0.removeFromSuperview() }
+            for index in profiles.indices {
+                if index > 0 {
+                    let divider = FillView()
+                    divider.color = Theme.divider
+                    divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+                    profileList.addArrangedSubview(divider)
+                    divider.leadingAnchor.constraint(equalTo: profileList.leadingAnchor, constant: 16).isActive = true
+                    divider.trailingAnchor.constraint(equalTo: profileList.trailingAnchor).isActive = true
+                }
+                let row = ProfileRow(index: index)
+                profileList.addArrangedSubview(row)
+                row.widthAnchor.constraint(equalTo: profileList.widthAnchor).isActive = true
+            }
+        }
+        for row in profileList.arrangedSubviews.compactMap({ $0 as? ProfileRow }) {
+            row.update(profiles[row.index], canDelete: profiles.count > 1)
+        }
+    }
+
+    @objc private func addProfile(_ sender: Any?) {
+        let index = AppState.shared.addProfile()
+        guard let row = profileList.arrangedSubviews.compactMap({ $0 as? ProfileRow }).first(where: { $0.index == index }) else { return }
+        view.window?.makeFirstResponder(row.nameField)
+    }
+
     private func card(_ rows: [NSView]) -> NSView {
         let card = CardView()
         var views: [NSView] = []
@@ -360,6 +539,7 @@ final class SettingsController: NSViewController {
 
     func refresh() {
         let state = AppState.shared
+        refreshProfiles(state)
         schemePopup.selectItem(at: ColorScheme.allCases.firstIndex(of: state.colorScheme) ?? 0)
         if shownThemes != state.themes {
             shownThemes = state.themes

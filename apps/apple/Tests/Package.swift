@@ -51,6 +51,7 @@ let package = Package(
                 "PathWatcher.swift",
                 "SessionState.swift",
                 "SidebarNode.swift",
+                "SidebarProfile.swift",
                 "SidebarTree.swift",
                 "ThemeLibrary.swift",
                 "TileLabel.swift",
