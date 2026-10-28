@@ -29,12 +29,43 @@ final class SidebarOutlineView: NSOutlineView {
     }
 }
 
+final class ProfileBar: NSStackView {
+    func reload() {
+        arrangedSubviews.forEach { $0.removeFromSuperview() }
+        let state = AppState.shared
+        isHidden = state.profiles.count < 2
+        guard !isHidden else { return }
+        for (index, profile) in state.profiles.enumerated() {
+            let active = index == state.profile
+            let button = PlainButton.make(profile.icon, profile.name, target: self, action: #selector(select(_:)))
+            button.tag = index
+            button.contentTintColor = active ? Theme.sidebarText : Theme.sidebarSecondaryText
+            let background = FillView()
+            background.color = active ? Theme.inactiveSelection : .clear
+            background.cornerRadius = 6
+            background.addSubview(button)
+            NSLayoutConstraint.activate([
+                background.widthAnchor.constraint(equalToConstant: 28),
+                background.heightAnchor.constraint(equalToConstant: 26),
+                button.centerXAnchor.constraint(equalTo: background.centerXAnchor),
+                button.centerYAnchor.constraint(equalTo: background.centerYAnchor),
+            ])
+            addArrangedSubview(background)
+        }
+    }
+
+    @objc private func select(_ sender: NSButton) {
+        AppState.shared.selectProfile(sender.tag)
+    }
+}
+
 final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuItemValidation {
     static let nodeType = NSPasteboard.PasteboardType("com.grahamotte.cubby.sidebar-node")
 
     weak var delegate: SidebarControllerDelegate?
     private let outlineView = SidebarOutlineView()
     private let renameField = RenameField.make()
+    private let profileBar = ProfileBar()
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
     private var currentPath: String?
@@ -77,11 +108,15 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         buttons.orientation = .horizontal
         buttons.spacing = 4
         buttons.translatesAutoresizingMaskIntoConstraints = false
+        profileBar.orientation = .horizontal
+        profileBar.spacing = 2
+        profileBar.translatesAutoresizingMaskIntoConstraints = false
 
         let root = FillView()
         root.color = Theme.sidebar
         root.addSubview(scroll)
         root.addSubview(buttons)
+        root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
@@ -89,6 +124,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
             buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
             buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: buttons.trailingAnchor, constant: 8),
+            profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
+            profileBar.centerYAnchor.constraint(equalTo: buttons.centerYAnchor),
         ])
         view = root
         reload()
@@ -132,6 +170,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     }
 
     private func reload() {
+        profileBar.reload()
         reloading = true
         outlineView.reloadData()
         expandNodes(tree.nodes)

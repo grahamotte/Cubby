@@ -49,6 +49,8 @@ enum DebugHooks {
             editor.selectAll(nil)
             editor.insertText(parts[1], replacementRange: editor.selectedRange())
             editor.insertNewline(nil)
+        case "profile":
+            AppState.shared.selectProfile(Int(parts[1]) ?? 0)
         case "undo":
             AppState.shared.undoManager.undo()
         case "focus":
