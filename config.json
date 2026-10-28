@@ -36,7 +36,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.2.0",
+    "build": "0.3.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, column, and gallery views",
       "macos": "golden_gate",
@@ -67,7 +67,7 @@
       },
       "android": {}
     },
-    "version": "0.2.0",
-    "whatsNew": "A calmer new look: a full-height sidebar, a clickable path bar with view and layout controls, soft light and dark surfaces with rounded selection, and no status bar. Settings now open in the window. Tabs are gone in favor of split panes; Cmd-click in the sidebar opens a new window."
+    "version": "0.3.0",
+    "whatsNew": "Color themes with light and dark variants, sidebar profiles you can switch between from the bottom of the sidebar, and Finder-like tile selection and thumbnails in the icon grid."
   }
 }
