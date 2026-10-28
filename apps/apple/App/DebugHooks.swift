@@ -51,6 +51,8 @@ enum DebugHooks {
             editor.selectAll(nil)
             editor.insertText(parts[1], replacementRange: editor.selectedRange())
             editor.insertNewline(nil)
+        case "sidebar":
+            _ = controller.sidebar.tryToPerform(Selector(parts[1]), with: nil)
         case "profile":
             AppState.shared.selectProfile(Int(parts[1]) ?? 0)
         case "undo":

@@ -29,6 +29,12 @@ final class SidebarOutlineView: NSOutlineView {
     }
 }
 
+final class PassthroughLabel: NSTextField {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+}
+
 final class SidebarButton: NSView {
     let button: NSButton
 
@@ -92,6 +98,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     private let outlineView = SidebarOutlineView()
     private let renameField = RenameField.make()
     private let profileBar = ProfileBar()
+    private let emptyLabel = PassthroughLabel(wrappingLabelWithString: "Drag folders here to add them.\nRight-click to add a group.")
     private let settingsButton = SidebarButton("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
@@ -132,9 +139,15 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         profileBar.spacing = 2
         profileBar.translatesAutoresizingMaskIntoConstraints = false
 
+        emptyLabel.font = .systemFont(ofSize: 12)
+        emptyLabel.textColor = Theme.sidebarSecondaryText
+        emptyLabel.isSelectable = false
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+
         let root = FillView()
         root.color = Theme.sidebar
         root.addSubview(scroll)
+        root.addSubview(emptyLabel)
         root.addSubview(settingsButton)
         root.addSubview(profileBar)
         NSLayoutConstraint.activate([
@@ -142,6 +155,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: settingsButton.topAnchor, constant: -6),
+            emptyLabel.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: 8),
+            emptyLabel.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 20),
+            emptyLabel.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -16),
             settingsButton.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 11),
             settingsButton.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
             profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settingsButton.trailingAnchor, constant: 8),
@@ -196,6 +212,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
 
     private func reload() {
         profileBar.reload()
+        emptyLabel.isHidden = !tree.nodes.isEmpty
         reloading = true
         outlineView.reloadData()
         expandNodes(tree.nodes)
@@ -356,18 +373,28 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
 
     private func beginRename(_ node: SidebarNode) {
         let row = outlineView.row(forItem: node)
-        guard row >= 0, let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView, let label = cell.textField else { return }
+        guard row >= 0 else { return }
         outlineView.scrollRowToVisible(row)
+        outlineView.layoutSubtreeIfNeeded()
+        guard let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView, let label = cell.textField else { return }
+        cell.layoutSubtreeIfNeeded()
         var frame = outlineView.convert(label.frame, from: cell).insetBy(dx: -2, dy: -2)
-        frame.size.width = max(frame.width, outlineView.bounds.width - frame.minX - 8)
+        frame.size.width = max(outlineView.visibleRect.maxX - 8 - frame.minX, 40)
         renameField.font = label.font
+        label.isHidden = true
+        cell.imageView?.isHidden = true
+        let restore = {
+            label.isHidden = false
+            cell.imageView?.isHidden = false
+        }
         renameField.onCommit = { [weak self] name in
+            restore()
             guard let self else { return }
             if self.tree.rename(node, to: name) {
                 self.save()
             }
         }
-        renameField.onCancel = nil
+        renameField.onCancel = restore
         renameField.begin(in: outlineView, frame: frame, text: node.displayName)
     }
 

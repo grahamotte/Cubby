@@ -2,7 +2,7 @@ import AppKit
 
 final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate, PaneControllerDelegate, SidebarControllerDelegate {
     private let splitController = NSSplitViewController()
-    private let sidebar = SidebarController()
+    let sidebar = SidebarController()
     private let container = NSViewController()
     private let topBar = TopBar()
     private let panesView = NSView()
