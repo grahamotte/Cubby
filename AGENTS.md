@@ -89,7 +89,7 @@ This repository is not deployed. Do not run `mise deploy` or the [deploy runbook
 
 ### Cubby
 
-Cubby is a native AppKit file manager for macOS 27+, inspired by QSpace Pro and meant as a daily Finder replacement. It is distributed as a signed and notarized repository release, not through the App Store. Keep it simple, fast, and light on options: prefer too few settings to too many. It has no cloud-drive integrations and never writes files such as `.DS_Store` or `.qspacesettings` into browsed folders.
+Cubby is a native AppKit file manager for macOS 27+, inspired by QSpace Pro and meant as a daily Finder replacement. It is distributed as a signed and notarized repository release, not through the App Store, and through the `cubby` Homebrew cask in `grahamotte/homebrew-tap`, which `mise publish` updates from `apps.homebrew` in `config.json` after each release. Keep it simple, fast, and light on options: prefer too few settings to too many. It has no cloud-drive integrations and never writes files such as `.DS_Store` or `.qspacesettings` into browsed folders.
 
 ### Apple App Architecture
 
