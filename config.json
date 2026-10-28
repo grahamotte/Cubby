@@ -37,6 +37,15 @@
   },
   "apps": {
     "build": "0.1.0",
+    "homebrew": {
+      "desc": "Fast, simple file manager with list, icon, column, and gallery views",
+      "macos": "golden_gate",
+      "zap": [
+        "~/.config/cubby",
+        "~/Library/Preferences/com.grahamotte.cubby.plist",
+        "~/Library/Saved Application State/com.grahamotte.cubby.savedState"
+      ]
+    },
     "marketingUrl": "https://github.com/grahamotte/Cubby",
     "name": "Cubby",
     "skip_app_stores": true,

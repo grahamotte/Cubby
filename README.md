@@ -4,6 +4,14 @@ Cubby is a fast, simple file manager for macOS, built as a daily replacement for
 
 Cubby is built on [Code Moto](https://github.com/grahamotte/CodeMoto), a shared foundation for a Rails API, a React website, native Apple apps, and project tooling. This repository keeps its own Git history and configuration, and merges improvements from Code Moto as the foundation evolves.
 
+## Install
+
+```sh
+brew install grahamotte/tap/cubby
+```
+
+Or download the signed, notarized zip from [Releases](https://github.com/grahamotte/Cubby/releases). Cubby needs macOS 27 or later.
+
 ## Features
 
 - List view with sortable, resizable columns and expandable folders; icon and gallery views with Quick Look thumbnails; column view with a preview of the selected file.
