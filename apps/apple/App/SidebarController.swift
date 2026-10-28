@@ -87,7 +87,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         outlineView.delegate = self
         outlineView.target = self
         outlineView.action = #selector(clicked)
-        outlineView.doubleAction = #selector(doubleClicked)
         outlineView.registerForDraggedTypes([SidebarController.nodeType, .fileURL])
         outlineView.setDraggingSourceOperationMask(.move, forLocal: true)
         outlineView.draggingDestinationFeedbackStyle = .sourceList
@@ -103,11 +102,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
         let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
-        let add = PlainButton.make("plus", "New Group", target: self, action: #selector(newGroup(_:)))
-        let buttons = NSStackView(views: [settings, add])
-        buttons.orientation = .horizontal
-        buttons.spacing = 4
-        buttons.translatesAutoresizingMaskIntoConstraints = false
         profileBar.orientation = .horizontal
         profileBar.spacing = 2
         profileBar.translatesAutoresizingMaskIntoConstraints = false
@@ -115,18 +109,18 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         let root = FillView()
         root.color = Theme.sidebar
         root.addSubview(scroll)
-        root.addSubview(buttons)
+        root.addSubview(settings)
         root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
-            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
-            buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
-            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: buttons.trailingAnchor, constant: 8),
+            scroll.bottomAnchor.constraint(equalTo: settings.topAnchor, constant: -6),
+            settings.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            settings.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settings.trailingAnchor, constant: 8),
             profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
-            profileBar.centerYAnchor.constraint(equalTo: buttons.centerYAnchor),
+            profileBar.centerYAnchor.constraint(equalTo: settings.centerYAnchor),
         ])
         view = root
         reload()
@@ -216,11 +210,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             }
             updateSelection()
         }
-    }
-
-    @objc private func doubleClicked() {
-        guard let node = outlineView.item(atRow: outlineView.clickedRow) as? SidebarNode, node.kind == .group else { return }
-        beginRename(node)
     }
 
     func handleKey(_ event: NSEvent) -> Bool {
