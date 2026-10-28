@@ -17,7 +17,9 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     private var browser: FileBrowser?
     private let header = PaneHeader()
     private let content = NSView()
-    private let status = StatusBar()
+    private let loading = NSProgressIndicator()
+    private let message = NSTextField(wrappingLabelWithString: "")
+    private var loadingIndicator: DispatchWorkItem?
     private var pendingSelection: Set<String> = []
     private var pendingRename: String?
     private var observers: [NSObjectProtocol] = []
@@ -53,16 +55,19 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
 
     override func loadView() {
         let root = NSView()
-        for subview in [header, content, status] {
+        for subview in [header, content, loading, message] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             root.addSubview(subview)
         }
         header.isHidden = true
         header.onClick = { [weak self] in self?.activate() }
-        status.pathControl.target = self
-        status.pathControl.action = #selector(pathClicked(_:))
-        status.slider.target = self
-        status.slider.action = #selector(iconSizeSlid(_:))
+        loading.style = .spinning
+        loading.controlSize = .small
+        loading.isDisplayedWhenStopped = false
+        message.font = .systemFont(ofSize: NSFont.systemFontSize)
+        message.textColor = .secondaryLabelColor
+        message.alignment = .center
+        message.isHidden = true
         let headerHeight = header.heightAnchor.constraint(equalToConstant: 26)
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: root.topAnchor),
@@ -72,11 +77,12 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             content.topAnchor.constraint(equalTo: header.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            status.topAnchor.constraint(equalTo: content.bottomAnchor),
-            status.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            status.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            status.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            status.heightAnchor.constraint(equalToConstant: 26),
+            content.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            loading.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            loading.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            message.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            message.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            message.widthAnchor.constraint(lessThanOrEqualTo: content.widthAnchor, constant: -40),
         ])
         header.heightConstraint = headerHeight
         view = root
@@ -90,9 +96,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
                     self.model.showHidden = AppState.shared.showHiddenFiles
                     self.model.reload()
                 }
-            },
-            center.addObserver(forName: .activityChanged, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.updateStatus() }
             },
         ]
     }
@@ -165,7 +168,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         browser?.select(paths: selected, scroll: true)
         browser?.focus()
         delegate?.paneDidNavigate(self)
-        updateStatus()
     }
 
     private var browserMode: ViewMode? {
@@ -205,8 +207,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             next.view.bottomAnchor.constraint(equalTo: content.bottomAnchor),
         ])
         browser = next
-        status.slider.isHidden = !(folderView.mode == .icons || folderView.mode == .gallery)
-        status.slider.integerValue = folderView.iconSize
         if hadFocus { next.focus() }
     }
 
@@ -215,23 +215,38 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     }
 
     private func startModel() {
-        status.setLoading(true)
+        setLoading(true)
         model.onChange = { [weak self] change in
             guard let self else { return }
             self.browser?.reload(change)
             if case .children = change {} else {
-                self.status.setLoading(false)
+                self.setLoading(false)
                 self.applyPending()
                 if let error = self.model.error, case .loaded = change {
-                    self.status.showError(error.isPermissionDenied ? "Cubby needs Full Disk Access to read this folder." : error.localizedDescription)
+                    self.showMessage(error.isPermissionDenied ? "Cubby needs Full Disk Access to read this folder." : error.localizedDescription)
                 }
             }
-            self.updateStatus()
         }
         model.start()
         header.title = displayName(model.path)
-        status.pathControl.url = model.path.fileURL
-        updateStatus()
+    }
+
+    private func setLoading(_ isLoading: Bool) {
+        loadingIndicator?.cancel()
+        loadingIndicator = nil
+        if isLoading {
+            showMessage(nil)
+            let work = DispatchWorkItem { [weak self] in self?.loading.startAnimation(nil) }
+            loadingIndicator = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+        } else {
+            loading.stopAnimation(nil)
+        }
+    }
+
+    private func showMessage(_ text: String?) {
+        message.stringValue = text ?? ""
+        message.isHidden = text == nil
     }
 
     private func applyPending() {
@@ -255,30 +270,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         if model.items.contains(where: { paths.contains($0.path) }) {
             applyPending()
         }
-    }
-
-    private func updateStatus() {
-        let total = model.items.count
-        let selected = selectedItems.count
-        var parts: [String] = []
-        if selected > 0 {
-            parts.append("\(selected.formatted()) of \(FileActions.itemCount(total)) selected")
-        } else {
-            parts.append(FileActions.itemCount(total))
-        }
-        if let free = freeSpace() {
-            parts.append("\(free) available")
-        }
-        status.info.stringValue = parts.joined(separator: ", ")
-        status.activity.stringValue = FileActions.activityText ?? ""
-        status.activitySpinner.isHidden = FileActions.activityText == nil
-        if FileActions.activityText != nil { status.activitySpinner.startAnimation(nil) } else { status.activitySpinner.stopAnimation(nil) }
-    }
-
-    private func freeSpace() -> String? {
-        let values = try? model.path.fileURL.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        guard let bytes = values?.volumeAvailableCapacityForImportantUsage else { return nil }
-        return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
     private func displayName(_ path: String) -> String {
@@ -308,7 +299,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     }
 
     func browserSelectionChanged() {
-        updateStatus()
         if QLPreviewPanel.sharedPreviewPanelExists(), QLPreviewPanel.shared().isVisible, QLPreviewPanel.shared().dataSource === self {
             QLPreviewPanel.shared().reloadData()
         }
@@ -356,7 +346,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         let clamped = min(max(size, FolderView.iconSizes.lowerBound), FolderView.iconSizes.upperBound)
         guard clamped != folderView.iconSize else { return }
         folderView.iconSize = clamped
-        status.slider.integerValue = clamped
         AppState.shared.setView(folderView, for: model.path)
         browser?.viewDidChange()
     }
@@ -372,15 +361,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
 
     func menu(for items: [FileItem], in directory: URL) -> NSMenu {
         ContextMenu.build(for: items, in: directory, pane: self)
-    }
-
-    @objc private func pathClicked(_ sender: NSPathControl) {
-        guard let url = sender.clickedPathItem?.url else { return }
-        navigate(to: url.path)
-    }
-
-    @objc private func iconSizeSlid(_ sender: NSSlider) {
-        setIconSize(sender.integerValue)
     }
 
     private var actionURLs: [URL] { selectedItems.map(\.url) }
@@ -578,7 +558,7 @@ final class PaneHeader: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        (isActive ? NSColor.controlAccentColor.withAlphaComponent(0.18) : NSColor.windowBackgroundColor).setFill()
+        (isActive ? NSColor.controlAccentColor.withAlphaComponent(0.18) : NSColor.controlBackgroundColor).setFill()
         bounds.fill()
         NSColor.separatorColor.setFill()
         NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()
@@ -590,77 +570,5 @@ final class PaneHeader: NSView {
 
     override func mouseDown(with event: NSEvent) {
         onClick?()
-    }
-}
-
-final class StatusBar: NSView {
-    let pathControl = NSPathControl()
-    let info = NSTextField(labelWithString: "")
-    let activity = NSTextField(labelWithString: "")
-    let activitySpinner = NSProgressIndicator()
-    let slider = NSSlider(value: 80, minValue: Double(FolderView.iconSizes.lowerBound), maxValue: Double(FolderView.iconSizes.upperBound), target: nil, action: nil)
-    private let loading = NSProgressIndicator()
-    private let error = NSTextField(labelWithString: "")
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        pathControl.pathStyle = .standard
-        pathControl.controlSize = .small
-        pathControl.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        pathControl.focusRingType = .none
-        pathControl.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        for label in [info, activity, error] {
-            label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-            label.textColor = .secondaryLabelColor
-            label.lineBreakMode = .byTruncatingTail
-        }
-        error.textColor = .systemRed
-        info.setContentCompressionResistancePriority(.required, for: .horizontal)
-        activity.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        for spinner in [loading, activitySpinner] {
-            spinner.style = .spinning
-            spinner.controlSize = .small
-            spinner.isDisplayedWhenStopped = false
-        }
-        activitySpinner.isHidden = true
-        slider.controlSize = .small
-        slider.isContinuous = true
-        slider.widthAnchor.constraint(equalToConstant: 90).isActive = true
-        let stack = NSStackView(views: [pathControl, loading, error, NSView(), activitySpinner, activity, info, slider])
-        stack.orientation = .horizontal
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 10)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-        ])
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError()
-    }
-
-    func setLoading(_ isLoading: Bool) {
-        if isLoading {
-            error.stringValue = ""
-            loading.startAnimation(nil)
-        } else {
-            loading.stopAnimation(nil)
-        }
-    }
-
-    func showError(_ message: String) {
-        error.stringValue = message
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.windowBackgroundColor.setFill()
-        bounds.fill()
-        NSColor.separatorColor.setFill()
-        NSRect(x: 0, y: bounds.height - 1, width: bounds.width, height: 1).fill()
     }
 }
