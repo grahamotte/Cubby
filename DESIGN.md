@@ -104,7 +104,7 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 
 ## Colors
 
-Colors come from the active theme. Cubby ships Workbench (the default) plus T3 Code's built-in themes: T3 Code, T3 Chat, Grove, Ocean, Ember, and Iris. Settings > Appearance picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench, and Duplicate in Settings writes a full copy of the selected theme to edit.
+Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Settings > Appearance picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
 
 The default "Workbench" theme is a barely warm paper neutral with the macOS accent color as its only hue.
 
