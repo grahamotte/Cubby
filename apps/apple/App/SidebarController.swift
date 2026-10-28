@@ -59,23 +59,26 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let add = NSButton(image: NSImage(systemSymbolName: "plus", accessibilityDescription: "Add")!, target: self, action: #selector(showAddMenu(_:)))
-        add.isBordered = false
-        add.translatesAutoresizingMaskIntoConstraints = false
-        add.toolTip = "New Group or Folder"
+        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(AppDelegate.openConfigFile(_:)))
+        let add = PlainButton.make("plus", "New Group", target: self, action: #selector(newGroup(_:)))
+        let buttons = NSStackView(views: [settings, add])
+        buttons.orientation = .horizontal
+        buttons.spacing = 4
+        buttons.translatesAutoresizingMaskIntoConstraints = false
 
-        let root = NSView()
+        let root = NSVisualEffectView()
+        root.material = .sidebar
+        root.blendingMode = .behindWindow
+        root.state = .followsWindowActiveState
         root.addSubview(scroll)
-        root.addSubview(add)
+        root.addSubview(buttons)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: add.topAnchor, constant: -4),
-            add.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 10),
-            add.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -8),
-            add.widthAnchor.constraint(equalToConstant: 20),
-            add.heightAnchor.constraint(equalToConstant: 20),
+            scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
+            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 10),
+            buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
         ])
         view = root
         reload()
@@ -217,10 +220,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         return true
     }
 
-    @objc private func showAddMenu(_ sender: NSButton) {
-        menu(forRow: -1).popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
-    }
-
     @objc private func openInNewTab(_ sender: NSMenuItem) {
         guard let url = (sender.representedObject as? SidebarNode)?.url else { return }
         delegate?.sidebar(self, open: url, newTab: true)
@@ -241,8 +240,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         remove(node)
     }
 
-    @objc private func newGroup(_ sender: NSMenuItem) {
-        let parent = sender.representedObject as? SidebarNode
+    @objc private func newGroup(_ sender: Any?) {
+        let parent = (sender as? NSMenuItem)?.representedObject as? SidebarNode
         let group = SidebarNode.group("New Group")
         tree.insert(group, into: parent)
         parent?.isCollapsed = false
