@@ -7,7 +7,7 @@ final class FillView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         color.setFill()
-        dirtyRect.fill()
+        bounds.intersection(dirtyRect).fill(using: .sourceOver)
     }
 }
 
@@ -99,10 +99,10 @@ final class TopBar: NSView {
         addSubview(crumbs)
         addSubview(controls)
         NSLayoutConstraint.activate([
-            crumbs.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            crumbs.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             crumbs.centerYAnchor.constraint(equalTo: centerYAnchor),
             crumbs.trailingAnchor.constraint(lessThanOrEqualTo: controls.leadingAnchor, constant: -12),
-            controls.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            controls.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             controls.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }

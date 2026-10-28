@@ -333,7 +333,7 @@ final class IconBrowser: TileBrowser {
         layout.itemSize = NSSize(width: max(size + 28, 96), height: size + 44)
         layout.minimumInteritemSpacing = 8
         layout.minimumLineSpacing = 8
-        layout.sectionInset = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        layout.sectionInset = NSEdgeInsets(top: 8, left: 16, bottom: 16, right: 16)
     }
 
     override func magnify(with event: NSEvent) {

@@ -6,6 +6,8 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     private let container = NSViewController()
     private let topBar = TopBar()
     private let panesView = NSView()
+    private var settings: SettingsController?
+    private var titlebarHeight: CGFloat = 0
     private(set) var panes: [PaneController] = []
     private(set) var layout: PaneLayout = .single
     private(set) var activeIndex = 0
@@ -66,6 +68,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     }
 
     private func installTopBar(titlebarHeight: CGFloat) {
+        self.titlebarHeight = titlebarHeight
         let root = container.view
         for subview in [topBar, panesView] {
             subview.translatesAutoresizingMaskIntoConstraints = false
@@ -216,6 +219,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     }
 
     func paneDidNavigate(_ pane: PaneController) {
+        closeSettings()
         if pane === activePane {
             updateActive()
         }
@@ -237,9 +241,44 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         if newTab {
             AppDelegate.shared?.openTab(path: url.path, in: self)
         } else {
+            closeSettings()
             activePane.navigate(to: url.path)
             activePane.activate()
         }
+    }
+
+    @objc func showSettings(_ sender: Any?) {
+        if settings != nil {
+            closeSettings()
+            return
+        }
+        let controller = SettingsController()
+        controller.headerHeight = max(titlebarHeight, 32)
+        controller.onClose = { [weak self] in self?.closeSettings() }
+        container.addChild(controller)
+        let view = controller.view
+        view.translatesAutoresizingMaskIntoConstraints = false
+        container.view.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: topBar.topAnchor),
+            view.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
+            view.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
+        ])
+        topBar.isHidden = true
+        panesView.isHidden = true
+        settings = controller
+        window?.makeFirstResponder(view)
+    }
+
+    func closeSettings() {
+        guard let settings else { return }
+        settings.view.removeFromSuperview()
+        settings.removeFromParent()
+        self.settings = nil
+        topBar.isHidden = false
+        panesView.isHidden = false
+        activePane.activate()
     }
 
     private static let selectionActions: Set<Selector> = [
@@ -251,7 +290,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
 
     override func supplementalTarget(forAction action: Selector, sender: Any?) -> Any? {
         let sidebarFocused = (window?.firstResponder as? NSView)?.isDescendant(of: sidebar.view) ?? false
-        if sidebarFocused && BrowserWindowController.selectionActions.contains(action) { return nil }
+        if (sidebarFocused || settings != nil) && BrowserWindowController.selectionActions.contains(action) { return nil }
         if activePane.responds(to: action) { return activePane }
         return super.supplementalTarget(forAction: action, sender: sender)
     }
