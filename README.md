@@ -36,13 +36,13 @@ The sidebar holds your folders in groups, and groups can nest. Drag a folder bet
 
 ### Settings
 
-Click the gear at the bottom of the sidebar (⌘,) to choose light, dark, or system appearance, a color theme, whether to show hidden files, which terminal **Open in Terminal** uses, and the default view for folders you haven't customized.
+Click the gear at the bottom of the sidebar (⌘,) to choose light, dark, or system appearance, a color theme, whether to show hidden files, and the default view for folders you haven't customized.
 
 Everything is stored as plain JSON in `~/.config/cubby`:
 
 | Path | Contents |
 | --- | --- |
-| `config.json` | Settings and sidebar profiles. Edit it by hand with **Open Config File…**; Cubby reloads it as soon as it changes. |
+| `config.json` | Settings and sidebar profiles, plus `terminal`, the app **Open in Terminal** uses. Edit it by hand with **Open Config File…**; Cubby reloads it as soon as it changes. |
 | `themes/` | Extra color themes, one `.json` file each. |
 | `folders.json` | Remembered per-folder views. |
 | `session.json` | Open windows, layouts, and list columns. |
