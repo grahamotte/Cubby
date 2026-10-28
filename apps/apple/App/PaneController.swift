@@ -6,7 +6,7 @@ protocol PaneControllerDelegate: AnyObject {
     func paneDidBecomeActive(_ pane: PaneController)
     func paneDidNavigate(_ pane: PaneController)
     func paneWantsNextPane(_ pane: PaneController)
-    func paneWantsNewTab(_ pane: PaneController, path: String)
+    func paneWantsNewWindow(_ pane: PaneController, path: String)
 }
 
 final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidation, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
@@ -291,7 +291,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         }
         for item in items {
             if item.isFolder {
-                delegate?.paneWantsNewTab(self, path: item.path)
+                delegate?.paneWantsNewWindow(self, path: item.path)
             } else {
                 NSWorkspace.shared.open(item.url)
             }
