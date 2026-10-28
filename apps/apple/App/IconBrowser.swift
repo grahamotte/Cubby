@@ -131,7 +131,7 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
     private var typeSelectBuffer = ""
     private var typeSelectTime = Date.distantPast
 
-    var items: [FileItem] { host?.model.items ?? [] }
+    private(set) var items: [FileItem] = []
     var iconSize: CGFloat { CGFloat(host?.folderView.iconSize ?? 80) }
 
     func item(at index: Int) -> FileItem? {
@@ -170,6 +170,8 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func reload(_ change: DirectoryModel.Change) {
         if case .children = change { return }
+        let selected = Set(selectedItems.map(\.path))
+        items = host?.model.items ?? []
         if case .loaded = change {
             collectionView.selectionIndexPaths = []
             collectionView.reloadData()
@@ -177,7 +179,6 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
             selectionChanged()
             return
         }
-        let selected = Set(selectedItems.map(\.path))
         collectionView.reloadData()
         select(paths: selected, scroll: false)
     }
