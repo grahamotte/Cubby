@@ -271,6 +271,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         topBar.isHidden = true
         panesView.isHidden = true
         settings = controller
+        sidebar.isSettingsActive = true
         window?.makeFirstResponder(view)
     }
 
@@ -279,6 +280,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         settings.view.removeFromSuperview()
         settings.removeFromParent()
         self.settings = nil
+        sidebar.isSettingsActive = false
         topBar.isHidden = false
         panesView.isHidden = false
         activePane.activate()
