@@ -8,6 +8,7 @@ final class CubbyPathsTests: XCTestCase {
         XCTAssertEqual(paths.configFile.lastPathComponent, "config.json")
         XCTAssertEqual(paths.folderViewsFile.lastPathComponent, "folders.json")
         XCTAssertEqual(paths.sessionFile.lastPathComponent, "session.json")
+        XCTAssertEqual(paths.themesDirectory.path, "/Users/me/.config/\(CubbyPaths.folderName)/themes")
         XCTAssertEqual(paths.configFile.deletingLastPathComponent().path, paths.configDirectory.path)
     }
 }

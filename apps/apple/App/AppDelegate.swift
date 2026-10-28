@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         #endif
         UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
         let state = AppState.shared
+        Theme.apply(state.theme, scheme: state.colorScheme)
         if let session = SessionState.load(from: state.paths.sessionFile) {
             state.listColumns = session.listColumns ?? []
             restore(session)

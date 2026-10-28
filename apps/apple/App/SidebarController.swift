@@ -369,7 +369,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         } else {
             let exists = node.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
             cell.imageView?.image = NSImage(systemSymbolName: exists ? "folder" : "exclamationmark.triangle", accessibilityDescription: nil)
-            cell.imageView?.contentTintColor = exists ? .secondaryLabelColor : .systemOrange
+            cell.imageView?.contentTintColor = exists ? Theme.icon : Theme.warning
             cell.toolTip = node.url?.path
             cell.alphaValue = exists ? 1 : 0.6
         }
@@ -390,9 +390,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         cell.imageView = image
         if group {
             label.font = .systemFont(ofSize: 12, weight: .medium)
-            label.textColor = .tertiaryLabelColor
+            label.textColor = Theme.sidebarSecondaryText
             image.symbolConfiguration = .init(pointSize: 8, weight: .semibold)
-            image.contentTintColor = .tertiaryLabelColor
+            image.contentTintColor = Theme.sidebarSecondaryText
             label.setContentHuggingPriority(.required, for: .horizontal)
             NSLayoutConstraint.activate([
                 label.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
@@ -404,6 +404,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             ])
         } else {
             label.font = .systemFont(ofSize: 13)
+            label.textColor = Theme.sidebarText
             image.symbolConfiguration = .init(pointSize: 13, weight: .regular)
             NSLayoutConstraint.activate([
                 image.leadingAnchor.constraint(equalTo: cell.leadingAnchor),

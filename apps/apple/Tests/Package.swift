@@ -52,6 +52,7 @@ let package = Package(
                 "SessionState.swift",
                 "SidebarNode.swift",
                 "SidebarTree.swift",
+                "ThemeLibrary.swift",
                 "TileLabel.swift",
             ],
             swiftSettings: [.swiftLanguageMode(.v5)],

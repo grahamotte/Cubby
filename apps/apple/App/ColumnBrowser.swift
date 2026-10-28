@@ -386,7 +386,8 @@ final class ColumnCell: NSTableCellView {
         let image = NSImageView()
         let label = NSTextField(labelWithString: "")
         label.lineBreakMode = .byTruncatingMiddle
-        chevron.contentTintColor = .secondaryLabelColor
+        label.textColor = Theme.text
+        chevron.contentTintColor = Theme.icon
         chevron.symbolConfiguration = .init(pointSize: 10, weight: .semibold)
         for view in [image, label, chevron] {
             view.translatesAutoresizingMaskIntoConstraints = false
