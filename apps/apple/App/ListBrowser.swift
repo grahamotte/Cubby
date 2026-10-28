@@ -55,7 +55,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     private var applyingSelection = false
     private var applyingColumns = false
 
-    private var items: [FileItem] { host?.model.items ?? [] }
+    private var items: [FileItem] = []
 
     override func loadView() {
         outlineView.browser = self
@@ -122,11 +122,13 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             outlineView.reloadItem(item, reloadChildren: true)
             restoreSelection(selected)
         case .loaded:
+            items = host?.model.items ?? []
             outlineView.reloadData()
             updateSortIndicator()
             outlineView.scrollRowToVisible(0)
         case .refreshed:
             let selected = Set(selectedItems.map(\.path))
+            items = host?.model.items ?? []
             outlineView.reloadData()
             updateSortIndicator()
             restoreSelection(selected)
@@ -304,7 +306,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         guard let item = item as? FileItem else { return items[index] }
-        return item.children?[index] ?? items[0]
+        return item.children?[index] ?? item
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
