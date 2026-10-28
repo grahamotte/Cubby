@@ -1,15 +1,48 @@
-# Code Moto
+# Cubby
 
-Code Moto is a shared foundation for building and maintaining apps. It brings a Rails API, a React website, native Apple apps, and project tooling into one repository, so new projects can start with the same development, testing, deployment, and release workflow.
+Cubby is a fast, simple file manager for macOS, built as a daily replacement for Finder and inspired by QSpace Pro. It browses folders in list, icon, column, and gallery views, splits a window into up to four panes, and keeps a sidebar of nested groups of your favorite folders.
 
-Projects built on Code Moto keep their own Git history and configuration, and can merge improvements from this repository as the foundation evolves. Components can be added or removed to suit each project.
+Cubby is built on [Code Moto](https://github.com/grahamotte/CodeMoto), a shared foundation for a Rails API, a React website, native Apple apps, and project tooling. This repository keeps its own Git history and configuration, and merges improvements from Code Moto as the foundation evolves.
 
-## What's included
+## Install
 
-- **Backend:** Ruby on Rails with PostgreSQL and GoodJob background jobs.
-- **Frontend:** React, TypeScript, Vite, and Tailwind CSS, with separate sites for configured subdomains.
-- **Apps:** Swift apps targeting iOS, macOS, and tvOS, with simulator and App Store publishing tools.
-- **Operations:** Server provisioning and deployment, backups, and shared Ruby gems.
+```sh
+brew install grahamotte/tap/cubby
+```
+
+Or download the signed, notarized zip from [Releases](https://github.com/grahamotte/Cubby/releases). Cubby needs macOS 27 or later.
+
+## Features
+
+- List view with sortable, resizable columns and expandable folders; icon and gallery views with Quick Look thumbnails; column view with a preview of the selected file.
+- Single, side-by-side, stacked, three-pane, and four-pane layouts, with native window tabs.
+- A sidebar of groups that can hold folders and other groups. Rename, reorder, and nest by dragging; drop a folder between rows to add it, or drop files onto a sidebar folder to move them (hold ⌥ to copy).
+- Each folder remembers its view, sort, and icon size without writing anything into the folder.
+- Copy, cut, paste, drag and drop, rename, duplicate, compress, new folder, Move to Trash, and undo.
+- Folders with 100,000+ items load in a fraction of a second.
+
+## Configuration
+
+Cubby keeps everything in `~/.config/cubby`:
+
+- `config.json` — editable by hand (Cubby ▸ Open Config File, ⌘,) and reloaded live:
+  - `showHiddenFiles`: `true` or `false`.
+  - `defaultView`: the view for folders you haven't customized (`mode`: `list`, `icons`, `columns`, or `gallery`; `sort`: `name`, `modified`, `added`, `created`, `size`, or `kind`; `ascending`; `iconSize`).
+  - `terminal`: the app used by Open in Terminal, such as `Terminal` or `Ghostty`.
+  - `sidebar`: a list of `{"group": "Name", "items": [...]}` and `{"folder": "~/path", "name": "optional alias"}` entries. Groups can contain groups; add `"collapsed": true` to start a group collapsed.
+- `folders.json` — remembered per-folder views, matched by path and file identity so they follow renamed folders.
+- `session.json` — open windows, tabs, layouts, and list columns.
+
+Debug builds use `~/.config/cubby-dev` so development never touches your real settings.
+
+## Contributing
+
+Tools:
+
+- `mise test` — run the complete app, web, deployment, and shared-gem test suite
+- `mise simulate macos` — build and launch the macOS app
+- `mise xcode` — open the Xcode project
+- the [publish runbook](runbooks/publish.md) — version, test, sign, notarize, and publish to GitHub Releases
 
 ## Local development
 
