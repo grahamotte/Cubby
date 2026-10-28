@@ -96,7 +96,8 @@ final class RenameField: NSTextField {
         field.isBordered = true
         field.isBezeled = false
         field.drawsBackground = true
-        field.backgroundColor = .textBackgroundColor
+        field.backgroundColor = Theme.card
+        field.textColor = Theme.text
         field.focusRingType = .default
         field.lineBreakMode = .byClipping
         field.cell?.isScrollable = true

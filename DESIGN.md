@@ -104,6 +104,8 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 
 ## Colors
 
+Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Settings > Appearance picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
+
 The default "Workbench" theme is a barely warm paper neutral with the macOS accent color as its only hue.
 
 ### Primary
@@ -115,12 +117,15 @@ The default "Workbench" theme is a barely warm paper neutral with the macOS acce
 - **Workbench Card** (#FFFFFF light / #28292B dark): settings cards; one step lighter than content.
 - **Hairline** (black 7% light / white 7% dark): the list header's bottom rule, split pane header rules, settings card borders and row dividers.
 - **Resting Selection** (black 7% light / white 9% dark): selection when its view is not focused, so the selection stays visible without competing.
-- **Text** uses system label colors: label for names, secondary label for dates, sizes, kinds and icons, tertiary label for group headers, separators in the breadcrumb, and inactive pane titles.
+- **Text** (black 85% light / white 85% dark): file names, the current breadcrumb, settings titles. **Secondary Text** (black 50% / white 55%): dates, sizes, kinds, ancestors in the breadcrumb, descriptions. **Tertiary Text** (black 26% / white 25%): breadcrumb separators and inactive pane titles.
+- **Icon** (black 50% / white 55%): toolbar symbols, sidebar folder symbols, disclosure chevrons.
+- **Sidebar Text** and **Sidebar Secondary Text**: sidebar folder names, and group headers with their chevrons.
+- **Accent Text** (white): the name on a focused selected tile's accent pill. **Warning** (system orange): a sidebar folder that no longer exists.
 
 ### Named Rules
 **The One Accent Rule.** The accent appears only as selection, focus, and the rare link. Folder icons, group headers, and toolbar icons are never tinted with it.
 
-**The Theme Contract Rule.** A theme defines exactly these roles, each with a light and dark value: content, sidebar, card, hairline, resting selection, and accent. Views read `Theme` roles only; no view hardcodes a color.
+**The Theme Contract Rule.** A theme defines exactly these roles, each with a light and dark value: `content`, `sidebar`, `card`, `divider` (hairline), `text`, `secondaryText`, `tertiaryText`, `icon`, `sidebarText`, `sidebarSecondaryText`, `accent`, `accentText`, and `warning`. Selection washes derive from them: the focused wash is the accent at 20%, and the resting wash is the text color at a tenth of its opacity. Views read `Theme` roles only; no view hardcodes a color. Native controls (switches, popups, search fields, menus) keep their system look.
 
 **The Tone Not Line Rule.** Separate planes by tone first. Add a hairline only where tone cannot do the job (list header, card rows, split panes).
 

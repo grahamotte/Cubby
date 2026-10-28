@@ -28,6 +28,14 @@ final class FileOutlineView: NSOutlineView {
         super.mouseDown(with: event)
     }
 
+    override func makeView(withIdentifier identifier: NSUserInterfaceItemIdentifier, owner: Any?) -> NSView? {
+        let view = super.makeView(withIdentifier: identifier, owner: owner)
+        if identifier == NSOutlineView.disclosureButtonIdentifier {
+            (view as? NSButton)?.contentTintColor = Theme.icon
+        }
+        return view
+    }
+
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         var frame = super.frameOfOutlineCell(atRow: row)
         if !frame.isEmpty { frame.origin.x += 8 }
@@ -418,6 +426,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 13)
+        label.textColor = Theme.text
         label.lineBreakMode = .byTruncatingMiddle
         label.cell?.truncatesLastVisibleLine = true
         cell.addSubview(image)
@@ -442,7 +451,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .secondaryLabelColor
+        label.textColor = Theme.secondaryText
         label.alignment = alignment
         label.lineBreakMode = .byTruncatingTail
         cell.addSubview(label)
