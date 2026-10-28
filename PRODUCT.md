@@ -18,7 +18,7 @@ Cubby is a fast, simple file manager that replaces Finder for daily browsing, or
 
 ## Positioning
 
-A personal, opinionated Finder replacement inspired by QSpace Pro, but deliberately smaller: few settings, no cloud-drive integrations, and no writing of `.DS_Store`, `.qspacesettings`, or any other file into browsed folders. All state lives in `~/.config/cubby` as hand-editable JSON.
+A personal, opinionated Finder replacement, deliberately small: few settings, no cloud-drive integrations, and no writing of `.DS_Store` or any other file into browsed folders. All state lives in `~/.config/cubby` as hand-editable JSON.
 
 ## Operating Context
 
