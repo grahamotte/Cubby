@@ -83,7 +83,7 @@ final class SettingsController: NSViewController {
         ("WezTerm", "com.github.wez.wezterm"),
     ]
 
-    private let schemeControl = NSSegmentedControl(labels: ColorScheme.allCases.map(\.title), trackingMode: .selectOne, target: nil, action: nil)
+    private let schemePopup = SettingsController.popup()
     private let themeGrid = NSStackView()
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
     private var shownThemes: ThemeLibrary?
@@ -123,10 +123,9 @@ final class SettingsController: NSViewController {
     }
 
     override func loadView() {
-        schemeControl.controlSize = .small
-        schemeControl.selectedSegmentBezelColor = Theme.accent
-        schemeControl.target = self
-        schemeControl.action = #selector(schemeChanged(_:))
+        schemePopup.addItems(withTitles: ColorScheme.allCases.map(\.title))
+        schemePopup.target = self
+        schemePopup.action = #selector(schemeChanged(_:))
         themeGrid.orientation = .vertical
         themeGrid.alignment = .leading
         themeGrid.spacing = 10
@@ -166,17 +165,8 @@ final class SettingsController: NSViewController {
         let footer = NSStackView(views: [path, openConfig])
         footer.spacing = 10
 
-        let themesTitle = sectionTitle("Themes")
-        themesTitle.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let themesHeader = NSStackView(views: [
-            themesTitle,
-            link("Duplicate", target: self, action: #selector(duplicateTheme(_:))),
-            link("Open Themes Folder", target: self, action: #selector(openThemesFolder(_:))),
-        ])
-        themesHeader.spacing = 14
-
         let appearanceCard = card([
-            row("Color scheme", "Follow the system, or always use light or dark.", schemeControl),
+            row("Color scheme", "Follow the system, or always use light or dark.", schemePopup),
         ])
         let generalCard = card([
             row("Show hidden files", "Show files and folders whose names start with a dot.", hiddenSwitch),
@@ -191,7 +181,7 @@ final class SettingsController: NSViewController {
         let sections: [NSView] = [
             sectionTitle("Appearance"),
             appearanceCard,
-            themesHeader,
+            sectionTitle("Theme"),
             themeGrid,
             themeErrors,
             sectionTitle("General"),
@@ -209,7 +199,7 @@ final class SettingsController: NSViewController {
         }
         stack.setCustomSpacing(16, after: defaultViewCard)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        for view in sections where view is CardView || view === themesHeader || view === themeGrid || view === themeErrors {
+        for view in sections where view is CardView || view === themeGrid || view === themeErrors {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
@@ -370,7 +360,7 @@ final class SettingsController: NSViewController {
 
     func refresh() {
         let state = AppState.shared
-        schemeControl.selectedSegment = ColorScheme.allCases.firstIndex(of: state.colorScheme) ?? 0
+        schemePopup.selectItem(at: ColorScheme.allCases.firstIndex(of: state.colorScheme) ?? 0)
         if shownThemes != state.themes {
             shownThemes = state.themes
             rebuildThemeGrid(state.themes)
@@ -406,26 +396,8 @@ final class SettingsController: NSViewController {
         terminalPopup.selectItem(at: terminalPopup.indexOfItem(withRepresentedObject: selected?.1 ?? current))
     }
 
-    @objc private func schemeChanged(_ sender: NSSegmentedControl) {
-        AppState.shared.colorScheme = ColorScheme.allCases[max(sender.selectedSegment, 0)]
-    }
-
-    @objc private func duplicateTheme(_ sender: Any?) {
-        let state = AppState.shared
-        do {
-            AppDelegate.openInTextEditor(try state.duplicateTheme(state.theme))
-        } catch {
-            NSAlert(error: error).runModal()
-        }
-    }
-
-    @objc private func openThemesFolder(_ sender: Any?) {
-        let state = AppState.shared
-        state.reloadThemes()
-        guard let controller = view.window?.windowController as? BrowserWindowController else { return }
-        controller.closeSettings()
-        controller.activePane.navigate(to: state.paths.themesDirectory.path)
-        controller.activePane.activate()
+    @objc private func schemeChanged(_ sender: NSPopUpButton) {
+        AppState.shared.colorScheme = ColorScheme.allCases[max(sender.indexOfSelectedItem, 0)]
     }
 
     @objc private func hiddenChanged(_ sender: NSSwitch) {

@@ -3,8 +3,8 @@ import XCTest
 
 final class ThemeLibraryTests: XCTestCase {
     func testBuiltInThemesDefineEveryRoleForBothVariants() {
-        XCTAssertEqual(ThemeLibrary.builtIn.map(\.id), ["workbench", "t3-code", "t3-chat", "grove", "ocean", "ember", "iris"])
-        XCTAssertEqual(ThemeLibrary.builtIn.map(\.name), ["Workbench", "T3 Code", "T3 Chat", "Grove", "Ocean", "Ember", "Iris"])
+        XCTAssertEqual(ThemeLibrary.builtIn.map(\.id), ["workbench", "bubblegum", "grove", "ocean", "ember", "iris"])
+        XCTAssertEqual(ThemeLibrary.builtIn.map(\.name), ["Workbench", "Bubblegum", "Grove", "Ocean", "Ember", "Iris"])
         for theme in ThemeLibrary.builtIn {
             XCTAssertEqual(Set(theme.light.colors.keys), Set(ThemeRole.allCases), theme.id)
             XCTAssertEqual(Set(theme.dark.colors.keys), Set(ThemeRole.allCases), theme.id)
@@ -64,8 +64,6 @@ final class ThemeLibraryTests: XCTestCase {
         XCTAssertEqual(sakura.dark[.accent].string, "#F07AA2")
         XCTAssertEqual(sakura.light[.sidebar], ThemeLibrary.builtIn[0].light[.sidebar])
         XCTAssertEqual(sakura.dark[.content], ThemeLibrary.builtIn[0].dark[.content])
-        XCTAssertFalse(library.isBuiltIn(sakura))
-        XCTAssertTrue(library.isBuiltIn(library.theme(id: "grove")))
     }
 
     func testMissingDirectoryLoadsBuiltIns() {
@@ -92,38 +90,5 @@ final class ThemeLibraryTests: XCTestCase {
         XCTAssertTrue(library.errors[2].contains("name"), library.errors[2])
         XCTAssertTrue(library.errors[3].hasPrefix("d-syntax.json: "), library.errors[3])
         XCTAssertTrue(library.errors[4].contains("grove"), library.errors[4])
-    }
-
-    func testEncodedThemeParsesBackIdentically() throws {
-        for theme in ThemeLibrary.builtIn {
-            XCTAssertEqual(try ThemeLibrary.parse(try ThemeLibrary.encode(theme), id: theme.id), theme)
-        }
-        let text = String(decoding: try ThemeLibrary.encode(ThemeLibrary.builtIn[0]), as: UTF8.self)
-        XCTAssertTrue(text.contains(#""accent" : "system""#), text)
-        XCTAssertTrue(text.contains(#""name" : "Workbench""#), text)
-    }
-
-    func testDuplicateWritesAnEditableCopyWithAUniqueID() throws {
-        let directory = makeTemporaryDirectory()
-        let grove = ThemeLibrary().theme(id: "grove")
-        let first = try ThemeLibrary(directory: directory).duplicate(grove, into: directory)
-        XCTAssertEqual(first.id, "grove-copy")
-        XCTAssertEqual(first.name, "Grove Copy")
-        XCTAssertEqual(first.light, grove.light)
-        XCTAssertEqual(first.dark, grove.dark)
-        let second = try ThemeLibrary(directory: directory).duplicate(grove, into: directory)
-        XCTAssertEqual(second.id, "grove-copy-2")
-        let library = ThemeLibrary(directory: directory)
-        XCTAssertEqual(library.errors, [])
-        XCTAssertEqual(library.theme(id: "grove-copy-2").light, grove.light)
-        let third = try library.duplicate(library.theme(id: "grove-copy"), into: directory)
-        XCTAssertEqual(third.id, "grove-copy-copy")
-        XCTAssertEqual(third.name, "Grove Copy Copy")
-    }
-
-    func testSlugs() {
-        XCTAssertEqual(ThemeLibrary.slug("NieR: Automata Copy"), "nier-automata-copy")
-        XCTAssertEqual(ThemeLibrary.slug("T3 Chat"), "t3-chat")
-        XCTAssertEqual(ThemeLibrary.slug("!!!"), "theme")
     }
 }

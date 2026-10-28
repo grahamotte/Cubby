@@ -92,13 +92,6 @@ final class AppState {
         themeDidChange()
     }
 
-    func duplicateTheme(_ theme: ThemeDefinition) throws -> URL {
-        let copy = try themes.duplicate(theme, into: paths.themesDirectory)
-        reloadThemes()
-        selectTheme(copy.id)
-        return paths.themesDirectory.appending(path: "\(copy.id).json")
-    }
-
     func reloadThemes() {
         let loaded = ThemeLibrary(directory: paths.themesDirectory)
         watchThemes()

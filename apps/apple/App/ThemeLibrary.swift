@@ -86,9 +86,6 @@ struct ThemePalette: Equatable {
         return palette
     }
 
-    var strings: [String: String] {
-        Dictionary(uniqueKeysWithValues: ThemeRole.allCases.map { ($0.rawValue, self[$0].string) })
-    }
 }
 
 struct ThemeDefinition: Equatable {
@@ -113,7 +110,7 @@ struct ThemeLibrary: Equatable {
         var errorDescription: String? { message }
     }
 
-    private struct ThemeFile: Codable {
+    private struct ThemeFile: Decodable {
         var name: String
         var light: [String: String]
         var dark: [String: String]
@@ -129,14 +126,8 @@ struct ThemeLibrary: Equatable {
             dark: ThemePalette([.content: "#1E1F21", .sidebar: "#17181A", .card: "#28292B", .divider: "#FFFFFF12", .text: "#FFFFFFD9", .secondaryText: "#FFFFFF8C", .tertiaryText: "#FFFFFF40", .icon: "#FFFFFF8C", .sidebarText: "#FFFFFFD9", .sidebarSecondaryText: "#FFFFFF40", .accent: "system", .accentText: "#FFFFFF", .warning: "#FF9F0A"]),
         ),
         ThemeDefinition(
-            id: "t3-code",
-            name: "T3 Code",
-            light: ThemePalette([.content: "#FCFCFC", .sidebar: "#FAFAFA", .card: "#FFFFFF", .divider: "#E4E4E7", .text: "#27272A", .secondaryText: "#71717B", .tertiaryText: "#71717BB3", .icon: "#71717B", .sidebarText: "#27272A", .sidebarSecondaryText: "#71717B", .accent: "#1B4ED8", .accentText: "#FFFFFF", .warning: "#FE9A00"]),
-            dark: ThemePalette([.content: "#0A0A0A", .sidebar: "#000000", .card: "#111111", .divider: "#191919", .text: "#F5F5F5", .secondaryText: "#818181", .tertiaryText: "#818181B3", .icon: "#818181", .sidebarText: "#F1F3F7", .sidebarSecondaryText: "#A3A3A3", .accent: "#346BF1", .accentText: "#FFFFFF", .warning: "#FE9A00"]),
-        ),
-        ThemeDefinition(
-            id: "t3-chat",
-            name: "T3 Chat",
+            id: "bubblegum",
+            name: "Bubblegum",
             light: ThemePalette([.content: "#FDF7FD", .sidebar: "#F2E1F4", .card: "#FAF3FB", .divider: "#EEE1ED", .text: "#501854", .secondaryText: "#AC1668", .tertiaryText: "#AC1668B3", .icon: "#AC1668", .sidebarText: "#454554", .sidebarSecondaryText: "#AC1668", .accent: "#DB2777", .accentText: "#FFFFFF", .warning: "#F59E0B"]),
             dark: ThemePalette([.content: "#1F1A24", .sidebar: "#171018", .card: "#29232D", .divider: "#27242C", .text: "#F9F8FB", .secondaryText: "#E7D0DD", .tertiaryText: "#E7D0DDB3", .icon: "#D4C7E1", .sidebarText: "#F4F4F5", .sidebarSecondaryText: "#E7D0DD", .accent: "#A3004C", .accentText: "#FBD0E8", .warning: "#F59E0B"]),
         ),
@@ -198,9 +189,6 @@ struct ThemeLibrary: Equatable {
         themes.first { $0.id == id } ?? ThemeLibrary.builtIn[0]
     }
 
-    func isBuiltIn(_ theme: ThemeDefinition) -> Bool {
-        ThemeLibrary.builtIn.contains { $0.id == theme.id }
-    }
 
     static func parse(_ data: Data, id: String) throws -> ThemeDefinition {
         let file = try JSONDecoder().decode(ThemeFile.self, from: data)
@@ -210,27 +198,4 @@ struct ThemeLibrary: Equatable {
         return ThemeDefinition(id: id, name: name, light: try base.light.merging(file.light), dark: try base.dark.merging(file.dark))
     }
 
-    static func encode(_ theme: ThemeDefinition) throws -> Data {
-        try JSONStore.encode(ThemeFile(name: theme.name, light: theme.light.strings, dark: theme.dark.strings))
-    }
-
-    func duplicate(_ theme: ThemeDefinition, into directory: URL) throws -> ThemeDefinition {
-        let taken = Set(themes.map(\.id)).union(ThemeLibrary.files(in: directory).map { $0.deletingPathExtension().lastPathComponent })
-        let name = "\(theme.name) Copy"
-        let base = ThemeLibrary.slug(name)
-        var id = base
-        var number = 2
-        while taken.contains(id) {
-            id = "\(base)-\(number)"
-            number += 1
-        }
-        let copy = ThemeDefinition(id: id, name: name, light: theme.light, dark: theme.dark)
-        try JSONStore.write(try ThemeLibrary.encode(copy), to: directory.appending(path: "\(id).json"))
-        return copy
-    }
-
-    static func slug(_ name: String) -> String {
-        let words = name.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
-        return words.isEmpty ? "theme" : words.joined(separator: "-")
-    }
 }
