@@ -53,6 +53,22 @@ enum DebugHooks {
             editor.insertNewline(nil)
         case "sidebar":
             _ = controller.sidebar.tryToPerform(Selector(parts[1]), with: nil)
+        case "key":
+            guard let window = controller.window, let code = UInt16(parts[1]) else { return }
+            let modifiers = parts.count > 2 ? parts[2] : ""
+            var flags: NSEvent.ModifierFlags = []
+            if modifiers.contains("c") { flags.insert(.command) }
+            if modifiers.contains("s") { flags.insert(.shift) }
+            if modifiers.contains("o") { flags.insert(.option) }
+            if modifiers.contains("t") { flags.insert(.control) }
+            let arrows: [UInt16: Int] = [126: NSUpArrowFunctionKey, 125: NSDownArrowFunctionKey, 123: NSLeftArrowFunctionKey, 124: NSRightArrowFunctionKey]
+            if arrows[code] != nil { flags.formUnion([.function, .numericPad]) }
+            let characters = arrows[code].flatMap { UnicodeScalar($0) }.map { String(Character($0)) } ?? (parts.count > 3 ? parts[3] : "")
+            window.makeKeyAndOrderFront(nil)
+            for type in [NSEvent.EventType.keyDown, .keyUp] {
+                guard let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code) else { continue }
+                NSApp.postEvent(event, atStart: false)
+            }
         case "profile":
             AppState.shared.selectProfile(Int(parts[1]) ?? 0)
         case "undo":

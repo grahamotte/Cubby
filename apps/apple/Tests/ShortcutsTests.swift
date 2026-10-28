@@ -32,7 +32,9 @@ final class ShortcutsTests: XCTestCase {
     }
 
     func testLooksUpShortcuts() {
-        XCTAssertEqual(Shortcuts[.back].keys, [.command("[")])
+        XCTAssertEqual(Shortcuts[.back].keys, [.command("["), KeyCombo(.leftArrow, .command)])
+        XCTAssertEqual(Shortcuts[.forward].keys, [.command("]"), KeyCombo(.rightArrow, .command)])
+        XCTAssertEqual(Shortcuts[.back].keys.map(\.display), ["⌘[", "⌘←"])
         XCTAssertEqual(Shortcuts[.newFolder].title, "New Folder")
         XCTAssertEqual(Shortcuts[.viewMode(.columns)].keys, [.command("3")])
         XCTAssertEqual(Shortcuts[.layout(.grid)].keys, [.command("5", .option)])
@@ -48,6 +50,8 @@ final class ShortcutsTests: XCTestCase {
         XCTAssertEqual(Shortcuts.action(for: KeyCombo(.delete, .command), in: .sidebar), .removeSidebarItem)
         XCTAssertEqual(Shortcuts.action(for: KeyCombo(.rightArrow), in: .columns), .nextColumn)
         XCTAssertNil(Shortcuts.action(for: KeyCombo(.rightArrow, .shift), in: .columns))
+        XCTAssertNil(Shortcuts.action(for: KeyCombo(.leftArrow, .command), in: .columns))
+        XCTAssertNil(Shortcuts.action(for: KeyCombo(.rightArrow, .command), in: .columns))
         XCTAssertNil(Shortcuts.action(for: KeyCombo(.returnKey, .command), in: .browsing))
         XCTAssertNil(Shortcuts.action(for: KeyCombo(.character("a")), in: .browsing))
     }

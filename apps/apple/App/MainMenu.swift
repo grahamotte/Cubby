@@ -2,6 +2,8 @@ import AppKit
 
 @MainActor
 enum MainMenu {
+    private(set) static var alternates: [KeyCombo: NSMenuItem] = [:]
+
     static func build() -> NSMenu {
         let main = NSMenu()
         main.addItem(submenu("Cubby", appMenu()))
@@ -33,16 +35,13 @@ enum MainMenu {
 
     private static func add(_ id: ShortcutID, _ action: Selector?, to menu: NSMenu, title: String? = nil, tag: Int = 0, represented: Any? = nil) {
         let shortcut = Shortcuts[id]
-        for (index, combo) in shortcut.keys.enumerated() {
-            let item = NSMenuItem(title: title ?? shortcut.title, action: action, keyEquivalent: combo.keyEquivalent)
-            item.keyEquivalentModifierMask = combo.modifiers.flags
-            item.tag = tag
-            item.representedObject = represented
-            if index > 0 {
-                item.isHidden = true
-                item.allowsKeyEquivalentWhenHidden = true
-            }
-            menu.addItem(item)
+        let item = NSMenuItem(title: title ?? shortcut.title, action: action, keyEquivalent: shortcut.keys[0].keyEquivalent)
+        item.keyEquivalentModifierMask = shortcut.keys[0].modifiers.flags
+        item.tag = tag
+        item.representedObject = represented
+        menu.addItem(item)
+        for combo in shortcut.keys.dropFirst() {
+            alternates[combo] = item
         }
     }
 
@@ -165,6 +164,7 @@ enum MainMenu {
 
 extension KeyCombo {
     init?(event: NSEvent) {
+        guard event.type == .keyDown || event.type == .keyUp else { return nil }
         let key: Key
         switch event.keyCode {
         case 36, 76: key = .returnKey

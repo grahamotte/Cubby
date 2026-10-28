@@ -176,8 +176,8 @@ enum Shortcuts {
             Shortcut(.toggleSidebar, "Toggle Sidebar", .view, .command("s", .control)),
             Shortcut(.fullScreen, "Enter Full Screen", .view, .command("f", .control)),
 
-            Shortcut(.back, "Back", .go, .command("[")),
-            Shortcut(.forward, "Forward", .go, .command("]")),
+            Shortcut(.back, "Back", .go, .command("["), KeyCombo(.leftArrow, .command)),
+            Shortcut(.forward, "Forward", .go, .command("]"), KeyCombo(.rightArrow, .command)),
             Shortcut(.enclosingFolder, "Enclosing Folder", .go, KeyCombo(.upArrow, .command)),
             Shortcut(.home, "Home", .go, .command("h", .shift)),
             Shortcut(.desktop, "Desktop", .go, .command("d", .shift)),

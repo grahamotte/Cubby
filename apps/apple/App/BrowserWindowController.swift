@@ -1,5 +1,17 @@
 import AppKit
 
+final class BrowserWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if !(firstResponder is NSTextView), let combo = KeyCombo(event: event), let item = MainMenu.alternates[combo], let action = item.action,
+           let target = NSApp.target(forAction: action, to: item.target, from: item) as AnyObject?,
+           (target as? NSMenuItemValidation)?.validateMenuItem(item) ?? true {
+            NSApp.sendAction(action, to: target, from: item)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate, PaneControllerDelegate, SidebarControllerDelegate {
     private let splitController = NSSplitViewController()
     let sidebar = SidebarController()
@@ -18,7 +30,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     var activePane: PaneController { panes[min(activeIndex, panes.count - 1)] }
 
     init(tab: SessionState.Tab, sidebarWidth: Double? = nil) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        let window = BrowserWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
@@ -382,7 +394,16 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-        let action = NSApp.currentEvent.flatMap(KeyCombo.init(event:)).flatMap { Shortcuts.action(for: $0, in: .filter) }
+        let action: ShortcutID?
+        if let combo = NSApp.currentEvent.flatMap(KeyCombo.init(event:)) {
+            action = Shortcuts.action(for: combo, in: .filter)
+        } else if commandSelector == #selector(NSResponder.insertNewline(_:)) || commandSelector == #selector(NSResponder.moveDown(_:)) {
+            action = .leaveFilter
+        } else if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            action = .clearFilter
+        } else {
+            action = nil
+        }
         if action == .leaveFilter {
             activePane.activate()
             return true
