@@ -65,7 +65,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         loading.controlSize = .small
         loading.isDisplayedWhenStopped = false
         message.font = .systemFont(ofSize: NSFont.systemFontSize)
-        message.textColor = .secondaryLabelColor
+        message.textColor = Theme.secondaryText
         message.alignment = .center
         message.isHidden = true
         let headerHeight = header.heightAnchor.constraint(equalToConstant: 26)
@@ -533,7 +533,7 @@ final class PaneHeader: NSView {
     }
 
     var isActive = false {
-        didSet { needsDisplay = true; label.textColor = isActive ? .labelColor : .tertiaryLabelColor }
+        didSet { needsDisplay = true; label.textColor = isActive ? Theme.text : Theme.tertiaryText }
     }
 
     override var isHidden: Bool {
@@ -563,7 +563,7 @@ final class PaneHeader: NSView {
         Theme.divider.setFill()
         NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()
         if isActive {
-            NSColor.controlAccentColor.setFill()
+            Theme.accent.setFill()
             NSRect(x: 0, y: bounds.height - 2, width: bounds.width, height: 2).fill()
         }
     }
