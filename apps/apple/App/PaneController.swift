@@ -459,6 +459,10 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         setSort(key, ascending: key == folderView.sort ? !folderView.ascending : key.defaultAscending)
     }
 
+    @objc func setSortDirection(_ sender: NSMenuItem) {
+        setSort(folderView.sort, ascending: sender.tag == 0)
+    }
+
     @objc func biggerIcons(_ sender: Any?) { setIconSize(folderView.iconSize + 16) }
     @objc func smallerIcons(_ sender: Any?) { setIconSize(folderView.iconSize - 16) }
 
@@ -478,6 +482,9 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         case #selector(sortBy(_:)):
             let isCurrent = SortKey.allCases.indices.contains(menuItem.tag) && SortKey.allCases[menuItem.tag] == folderView.sort
             menuItem.state = isCurrent ? .on : .off
+            return true
+        case #selector(setSortDirection(_:)):
+            menuItem.state = (menuItem.tag == 0) == folderView.ascending ? .on : .off
             return true
         case #selector(biggerIcons(_:)), #selector(smallerIcons(_:)):
             return folderView.mode == .icons || folderView.mode == .gallery

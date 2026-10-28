@@ -42,6 +42,7 @@ final class TopBar: NSView {
     private let activitySpinner = NSProgressIndicator()
     private let activityLabel = NSTextField(labelWithString: "")
     private lazy var filterButton = PlainButton.make("magnifyingglass", "Filter", target: nil, action: #selector(BrowserWindowController.performFindPanelAction(_:)))
+    private lazy var sortButton = PlainButton.make("arrow.up.arrow.down", "Sort", target: self, action: #selector(showSortMenu(_:)))
     private lazy var modeButton = PlainButton.make(ViewMode.list.symbolName, "View", target: self, action: #selector(showModeMenu(_:)))
     private lazy var layoutButton = PlainButton.make(PaneLayout.single.symbolName, "Layout", target: self, action: #selector(showLayoutMenu(_:)))
 
@@ -96,7 +97,7 @@ final class TopBar: NSView {
         searchField.isHidden = true
         searchField.widthAnchor.constraint(equalToConstant: 180).isActive = true
 
-        let controls = NSStackView(views: [activitySpinner, activityLabel, searchField, filterButton, modeButton, layoutButton])
+        let controls = NSStackView(views: [activitySpinner, activityLabel, searchField, filterButton, sortButton, modeButton, layoutButton])
         controls.orientation = .horizontal
         controls.spacing = 2
         controls.setCustomSpacing(8, after: activityLabel)
@@ -170,6 +171,22 @@ final class TopBar: NSView {
             item.tag = index
             item.image = NSImage(systemSymbolName: mode.symbolName, accessibilityDescription: nil)
             item.preferredImageVisibility = .visible
+            menu.addItem(item)
+        }
+        popUp(menu, from: sender)
+    }
+
+    @objc private func showSortMenu(_ sender: NSButton) {
+        let menu = NSMenu()
+        for (index, key) in SortKey.allCases.enumerated() {
+            let item = NSMenuItem(title: key.title, action: #selector(PaneController.sortBy(_:)), keyEquivalent: "")
+            item.tag = index
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        for (index, title) in ["Ascending", "Descending"].enumerated() {
+            let item = NSMenuItem(title: title, action: #selector(PaneController.setSortDirection(_:)), keyEquivalent: "")
+            item.tag = index
             menu.addItem(item)
         }
         popUp(menu, from: sender)
