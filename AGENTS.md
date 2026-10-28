@@ -65,6 +65,7 @@ For card work, use Mr. Moto's `mr` CLI: run `mr card claim <CARD>` and follow it
 - `config.json` - Non-secret configuration, including mobile app release (`apps`) and website subdomain (`subdomains`) settings. Code reads it directly instead of `ENV`.
 - `deploy/` - Backend and frontend deployment tooling.
 - `docs/` - Project documentation in Markdown.
+- `PRODUCT.md`, `DESIGN.md`, `.impeccable/` - Product context and the visual design system (theme roles, type, spacing, components) used by the Impeccable design skill. Update `DESIGN.md` when the look changes; colors live in `Theme` roles with light and dark values.
 - `frontend/` - React website.
 - `gems/` - Shared Ruby gems.
 - `manager/` - Project tooling for spawning new apps and Code Moto merges.

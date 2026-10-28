@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T20:30:17.219834+00:00",
+  "title": "Design System: Cubby",
+  "extensions": {
+    "colorMeta": {
+      "workbench-content": {
+        "role": "neutral",
+        "displayName": "Workbench Content",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "workbench-content-dark": {
+        "role": "neutral",
+        "displayName": "Workbench Content (dark)",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "workbench-sidebar": {
+        "role": "neutral",
+        "displayName": "Workbench Sidebar",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "workbench-sidebar-dark": {
+        "role": "neutral",
+        "displayName": "Workbench Sidebar (dark)",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "workbench-card": {
+        "role": "neutral",
+        "displayName": "Workbench Card",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "workbench-card-dark": {
+        "role": "neutral",
+        "displayName": "Workbench Card (dark)",
+        "tonalRamp": [
+          "#17181A",
+          "#1E1F21",
+          "#28292B",
+          "#5E5F61",
+          "#9A9B98",
+          "#D6D6D3",
+          "#F1F1EF",
+          "#FCFCFB"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline"
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)"
+      },
+      "resting-selection": {
+        "role": "neutral",
+        "displayName": "Resting Selection"
+      },
+      "resting-selection-dark": {
+        "role": "neutral",
+        "displayName": "Resting Selection (dark)"
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Accent (system accent by default)",
+        "tonalRamp": [
+          "#00214A",
+          "#003A80",
+          "#0053B5",
+          "#006BE6",
+          "#2E8BFF",
+          "#6AABFF",
+          "#A7CDFF",
+          "#E3F0FF"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "File names, sidebar folders, breadcrumb ancestors."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Current breadcrumb folder, settings row titles."
+      },
+      "secondary": {
+        "displayName": "Secondary",
+        "purpose": "Non-name list columns, descriptions, tile labels."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Sidebar group headers, split pane titles."
+      },
+      "column-header": {
+        "displayName": "Column Header",
+        "purpose": "List column titles."
+      },
+      "section-title": {
+        "displayName": "Section Title",
+        "purpose": "Settings section headings."
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "Borderless muted symbol button used in the top bar and sidebar footer.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"View\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><rect x=\"2\" y=\"2\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"9\" y=\"2\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"2\" y=\"9\" width=\"5\" height=\"5\" rx=\"1\"/><rect x=\"9\" y=\"9\" width=\"5\" height=\"5\" rx=\"1\"/></svg></button>",
+      "css": ".ds-icon-btn { width: 26px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; color: rgba(0,0,0,0.5); } .ds-icon-btn:hover { color: rgba(0,0,0,0.85); } .ds-icon-btn:focus-visible { outline: 2px solid rgba(0,122,255,0.6); outline-offset: 1px; border-radius: 6px; }"
+    },
+    {
+      "name": "File Row (selected)",
+      "kind": "custom",
+      "refersTo": "file-row-selected",
+      "description": "List row with the rounded accent selection wash.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-row-icon\"></span>Theme.swift<span class=\"ds-row-meta\">Today at 1:02 PM</span></div>",
+      "css": ".ds-row { height: 28px; margin: 0 6px; padding: 0 10px; display: flex; align-items: center; gap: 8px; font: 400 13px -apple-system, system-ui; color: rgba(0,0,0,0.85); background: rgba(0,122,255,0.2); border-radius: 6px; } .ds-row-icon { width: 16px; height: 16px; border-radius: 3px; background: #d6d6d3; } .ds-row-meta { margin-left: auto; font-size: 12px; color: rgba(0,0,0,0.5); }"
+    },
+    {
+      "name": "Sidebar Group",
+      "kind": "nav",
+      "refersTo": "sidebar-group",
+      "description": "Sidebar group header with trailing chevron and nested folders.",
+      "html": "<nav class=\"ds-side\"><div class=\"ds-side-group\">Favorites \u2304</div><div class=\"ds-side-item ds-side-on\">graham</div><div class=\"ds-side-item\">Downloads</div></nav>",
+      "css": ".ds-side { background: #F1F1EF; padding: 8px 0; width: 200px; font: 13px -apple-system, system-ui; } .ds-side-group { height: 28px; line-height: 28px; padding-left: 18px; font-size: 12px; font-weight: 500; color: rgba(0,0,0,0.26); } .ds-side-item { height: 28px; line-height: 28px; margin: 0 8px; padding-left: 24px; border-radius: 6px; color: rgba(0,0,0,0.85); } .ds-side-item:hover { background: rgba(0,0,0,0.04); } .ds-side-on { background: rgba(0,0,0,0.07); }"
+    },
+    {
+      "name": "Settings Card",
+      "kind": "card",
+      "refersTo": "settings-card",
+      "description": "Grouped settings rows with title, description, and a trailing native control.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-row\"><div><div class=\"ds-card-title\">Show hidden files</div><div class=\"ds-card-desc\">Show files and folders whose names start with a dot.</div></div><span class=\"ds-switch\"></span></div></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 10px; font-family: -apple-system, system-ui; } .ds-card-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; } .ds-card-title { font: 500 13px -apple-system, system-ui; } .ds-card-desc { font-size: 12px; color: rgba(0,0,0,0.5); margin-top: 3px; } .ds-switch { width: 38px; height: 22px; border-radius: 11px; background: rgba(0,0,0,0.1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Workbench",
+    "overview": "Cubby is a calm, well-lit desk where the files are the work. Surfaces are flat and softly tinted, chrome is thin, and every control waits at the edge until it is needed. Density is the Mac's: 13 pt names in 28 pt rows, a 16 pt gutter, and nothing that pulls the eye away from file names, icons, and thumbnails.\n\nThe look comes from tone, not ornament. A slightly darker sidebar sits beside a near-white (or near-black) content plane; hairlines separate only where structure needs it; selection is a soft rounded wash of the accent color. There is no glass, no gradient, no shadow, and no bezel on any control. Everything is native AppKit, drawn with system type and SF Symbols.\n\nThe system is built for themes. A theme is a small set of tinted neutrals plus one accent, each defined for light and dark, and every view reads colors only through `Theme` roles, so a new theme never touches layout or components.",
+    "keyCharacteristics": [
+      "Flat, tonal surfaces: sidebar darker than content; cards lighter than the page.",
+      "One accent, used for selection and focus only.",
+      "Borderless, muted controls (secondary label color, 14 pt symbols).",
+      "Rounded selection washes (6 pt rows, 8 pt tiles) that merge across adjacent rows.",
+      "Light and dark are equal citizens; every role has both values."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "The accent appears only as selection, focus, and the rare link. Folder icons, group headers, and toolbar icons are never tinted with it.",
+        "section": "colors"
+      },
+      {
+        "name": "The Theme Contract Rule",
+        "body": "A theme defines exactly these roles, each with a light and dark value: content, sidebar, card, hairline, resting selection, and accent. Views read `Theme` roles only; no view hardcodes a color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tone Not Line Rule",
+        "body": "Separate planes by tone first. Add a hairline only where tone cannot do the job (list header, card rows, split panes).",
+        "section": "colors"
+      },
+      {
+        "name": "The Small Steps Rule",
+        "body": "Sizes stay within 11-13 pt in the browser. Emphasis is weight (400 to 500) or label color, never a bigger size.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Glass Rule",
+        "body": "No glass buttons, blurred backdrops, or translucency in Cubby's own views. If something needs to stand out, it gets a tone step, not a material.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** add new colors as `Theme` roles with both light and dark values, and use them from every view through `Theme`.",
+      "**Do** keep the browser within 11-13 pt type and create emphasis with weight or label color.",
+      "**Do** align new content to the 16 pt gutter and 28 pt row rhythm.",
+      "**Do** use native AppKit controls and SF Symbols, made borderless and muted where they sit in chrome.",
+      "**Do** check light and dark, Increase Contrast, and a 100k+ item folder before calling a visual change done."
+    ],
+    "donts": [
+      "**Don't** use glass, blur, vibrancy, gradients, or shadows in Cubby's own views.",
+      "**Don't** tint folder icons, headers, or chrome with the accent.",
+      "**Don't** bring back alternating row stripes, full-width blue selection bars, toolbar glass buttons, or a bottom status bar.",
+      "**Don't** add per-row drawing that costs time on huge folders.",
+      "**Don't** fill a translucent color over a view's whole dirty rect; clip fills to the view's bounds."
+    ]
+  }
+}
