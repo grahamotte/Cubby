@@ -13,7 +13,7 @@ final class FileTileItem: NSCollectionViewItem {
     override func loadView() {
         view = NSView()
         selectionBackground.wantsLayer = true
-        selectionBackground.layer?.cornerRadius = 6
+        selectionBackground.layer?.cornerRadius = 8
         thumbnail.imageScaling = .scaleProportionallyUpOrDown
         label.alignment = .center
         label.maximumNumberOfLines = 2
@@ -78,11 +78,13 @@ final class FileTileItem: NSCollectionViewItem {
 
     private func updateSelection() {
         let selected = isSelected || highlightState == .forSelection
-        selectionBackground.layer?.backgroundColor = selected ? NSColor.unemphasizedSelectedContentBackgroundColor.cgColor : nil
-        label.textColor = .labelColor
-        if selected, view.window?.firstResponder is NSCollectionView {
-            selectionBackground.layer?.backgroundColor = NSColor.selectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
+        let focused = view.window?.firstResponder is NSCollectionView
+        var color: CGColor?
+        view.effectiveAppearance.performAsCurrentDrawingAppearance {
+            color = selected ? (focused ? Theme.selection : Theme.inactiveSelection).cgColor : nil
         }
+        selectionBackground.layer?.backgroundColor = color
+        label.textColor = .labelColor
     }
 }
 
@@ -331,7 +333,7 @@ final class IconBrowser: TileBrowser {
         layout.itemSize = NSSize(width: max(size + 28, 96), height: size + 44)
         layout.minimumInteritemSpacing = 8
         layout.minimumLineSpacing = 8
-        layout.sectionInset = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        layout.sectionInset = NSEdgeInsets(top: 8, left: 16, bottom: 16, right: 16)
     }
 
     override func magnify(with event: NSEvent) {

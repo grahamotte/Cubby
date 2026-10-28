@@ -2,7 +2,7 @@ import AppKit
 
 @MainActor
 protocol SidebarControllerDelegate: AnyObject {
-    func sidebar(_ sidebar: SidebarController, open url: URL, newTab: Bool)
+    func sidebar(_ sidebar: SidebarController, open url: URL, newWindow: Bool)
 }
 
 final class SidebarOutlineView: NSOutlineView {
@@ -16,6 +16,16 @@ final class SidebarOutlineView: NSOutlineView {
     override func keyDown(with event: NSEvent) {
         if controller?.handleKey(event) == true { return }
         super.keyDown(with: event)
+    }
+
+    override func frameOfOutlineCell(atRow row: Int) -> NSRect {
+        .zero
+    }
+
+    override func frameOfCell(atColumn column: Int, row: Int) -> NSRect {
+        let frame = super.frameOfCell(atColumn: column, row: row)
+        let x = 18 + CGFloat(level(forRow: row)) * 14
+        return NSRect(x: x, y: frame.minY, width: max(bounds.width - x - 12, 0), height: frame.height)
     }
 }
 
@@ -35,8 +45,10 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     override func loadView() {
         outlineView.controller = self
         outlineView.headerView = nil
-        outlineView.style = .sourceList
-        outlineView.rowSizeStyle = .default
+        outlineView.style = .plain
+        outlineView.backgroundColor = .clear
+        outlineView.rowSizeStyle = .custom
+        outlineView.rowHeight = 28
         outlineView.floatsGroupRows = false
         outlineView.indentationPerLevel = 12
         outlineView.allowsMultipleSelection = false
@@ -59,23 +71,24 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        let add = NSButton(image: NSImage(systemSymbolName: "plus", accessibilityDescription: "Add")!, target: self, action: #selector(showAddMenu(_:)))
-        add.isBordered = false
-        add.translatesAutoresizingMaskIntoConstraints = false
-        add.toolTip = "New Group or Folder"
+        let settings = PlainButton.make("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
+        let add = PlainButton.make("plus", "New Group", target: self, action: #selector(newGroup(_:)))
+        let buttons = NSStackView(views: [settings, add])
+        buttons.orientation = .horizontal
+        buttons.spacing = 4
+        buttons.translatesAutoresizingMaskIntoConstraints = false
 
-        let root = NSView()
+        let root = FillView()
+        root.color = Theme.sidebar
         root.addSubview(scroll)
-        root.addSubview(add)
+        root.addSubview(buttons)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: add.topAnchor, constant: -4),
-            add.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 10),
-            add.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -8),
-            add.widthAnchor.constraint(equalToConstant: 20),
-            add.heightAnchor.constraint(equalToConstant: 20),
+            scroll.bottomAnchor.constraint(equalTo: buttons.topAnchor, constant: -6),
+            buttons.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            buttons.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
         ])
         view = root
         reload()
@@ -153,10 +166,15 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     @objc private func clicked() {
         guard let node = outlineView.item(atRow: outlineView.clickedRow) as? SidebarNode else { return }
         if node.kind == .folder, let url = node.url {
-            let newTab = NSEvent.modifierFlags.contains(.command)
-            delegate?.sidebar(self, open: url, newTab: newTab)
-            if newTab { updateSelection() }
+            let newWindow = NSEvent.modifierFlags.contains(.command)
+            delegate?.sidebar(self, open: url, newWindow: newWindow)
+            if newWindow { updateSelection() }
         } else {
+            if outlineView.isItemExpanded(node) {
+                outlineView.collapseItem(node)
+            } else {
+                outlineView.expandItem(node)
+            }
             updateSelection()
         }
     }
@@ -191,7 +209,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         }
         if let node {
             if node.kind == .folder {
-                add("Open in New Tab", #selector(openInNewTab(_:)), node)
+                add("Open in New Window", #selector(openInNewWindow(_:)), node)
                 add("Show in Finder", #selector(showInFinder(_:)), node)
                 menu.addItem(.separator())
             }
@@ -210,20 +228,16 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(openInNewTab(_:)) || menuItem.action == #selector(showInFinder(_:)) {
+        if menuItem.action == #selector(openInNewWindow(_:)) || menuItem.action == #selector(showInFinder(_:)) {
             guard let node = menuItem.representedObject as? SidebarNode, let url = node.url else { return false }
             return FileManager.default.fileExists(atPath: url.path)
         }
         return true
     }
 
-    @objc private func showAddMenu(_ sender: NSButton) {
-        menu(forRow: -1).popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
-    }
-
-    @objc private func openInNewTab(_ sender: NSMenuItem) {
+    @objc private func openInNewWindow(_ sender: NSMenuItem) {
         guard let url = (sender.representedObject as? SidebarNode)?.url else { return }
-        delegate?.sidebar(self, open: url, newTab: true)
+        delegate?.sidebar(self, open: url, newWindow: true)
     }
 
     @objc private func showInFinder(_ sender: NSMenuItem) {
@@ -241,8 +255,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         remove(node)
     }
 
-    @objc private func newGroup(_ sender: NSMenuItem) {
-        let parent = sender.representedObject as? SidebarNode
+    @objc private func newGroup(_ sender: Any?) {
+        let parent = (sender as? NSMenuItem)?.representedObject as? SidebarNode
         let group = SidebarNode.group("New Group")
         tree.insert(group, into: parent)
         parent?.isCollapsed = false
@@ -318,13 +332,25 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         guard !reloading, let node = notification.userInfo?["NSObject"] as? SidebarNode else { return }
         node.isCollapsed = false
         expandNodes(node.children)
+        updateChevron(node)
         persistCollapse()
     }
 
     func outlineViewItemDidCollapse(_ notification: Notification) {
         guard !reloading, let node = notification.userInfo?["NSObject"] as? SidebarNode else { return }
         node.isCollapsed = true
+        updateChevron(node)
         persistCollapse()
+    }
+
+    private func updateChevron(_ node: SidebarNode) {
+        let row = outlineView.row(forItem: node)
+        guard row >= 0, let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView else { return }
+        cell.imageView?.image = chevron(collapsed: node.isCollapsed)
+    }
+
+    private func chevron(collapsed: Bool) -> NSImage? {
+        NSImage(systemSymbolName: collapsed ? "chevron.right" : "chevron.down", accessibilityDescription: nil)
     }
 
     private func persistCollapse() {
@@ -338,10 +364,12 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         let id = NSUserInterfaceItemIdentifier(node.kind == .group ? "group" : "folder")
         let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NSTableCellView) ?? makeCell(id, group: node.kind == .group)
         cell.textField?.stringValue = node.displayName
-        if node.kind == .folder {
+        if node.kind == .group {
+            cell.imageView?.image = chevron(collapsed: node.isCollapsed)
+        } else {
             let exists = node.url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
             cell.imageView?.image = NSImage(systemSymbolName: exists ? "folder" : "exclamationmark.triangle", accessibilityDescription: nil)
-            cell.imageView?.contentTintColor = exists ? .controlAccentColor : .systemOrange
+            cell.imageView?.contentTintColor = exists ? .secondaryLabelColor : .systemOrange
             cell.toolTip = node.url?.path
             cell.alphaValue = exists ? 1 : 0.6
         }
@@ -356,30 +384,43 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         label.lineBreakMode = .byTruncatingTail
         cell.addSubview(label)
         cell.textField = label
+        let image = NSImageView()
+        image.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(image)
+        cell.imageView = image
         if group {
-            label.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
-            label.textColor = .secondaryLabelColor
+            label.font = .systemFont(ofSize: 12, weight: .medium)
+            label.textColor = .tertiaryLabelColor
+            image.symbolConfiguration = .init(pointSize: 8, weight: .semibold)
+            image.contentTintColor = .tertiaryLabelColor
+            label.setContentHuggingPriority(.required, for: .horizontal)
             NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+                label.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor, constant: -16),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                image.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 5),
+                image.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor),
+                image.centerYAnchor.constraint(equalTo: cell.centerYAnchor, constant: 1),
             ])
         } else {
-            let image = NSImageView()
-            image.translatesAutoresizingMaskIntoConstraints = false
+            label.font = .systemFont(ofSize: 13)
             image.symbolConfiguration = .init(pointSize: 13, weight: .regular)
-            cell.addSubview(image)
-            cell.imageView = image
             NSLayoutConstraint.activate([
-                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
+                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
                 image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
                 image.widthAnchor.constraint(equalToConstant: 18),
-                label.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 5),
+                label.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 7),
                 label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
         }
         return cell
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        let row = RoundedRowView()
+        row.horizontalInset = 8
+        return row
     }
 
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? {

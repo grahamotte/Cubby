@@ -1,45 +1,41 @@
 import AppKit
 
-extension NSToolbarItem.Identifier {
-    static let navigation = NSToolbarItem.Identifier("navigation")
-    static let viewMode = NSToolbarItem.Identifier("viewMode")
-    static let layout = NSToolbarItem.Identifier("layout")
-    static let search = NSToolbarItem.Identifier("search")
-    static let newFolder = NSToolbarItem.Identifier("newFolder")
-}
-
-final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate, NSSearchFieldDelegate, PaneControllerDelegate, SidebarControllerDelegate {
+final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate, PaneControllerDelegate, SidebarControllerDelegate {
     private let splitController = NSSplitViewController()
     private let sidebar = SidebarController()
     private let container = NSViewController()
+    private let topBar = TopBar()
+    private let panesView = NSView()
+    private var settings: SettingsController?
+    private var titlebarHeight: CGFloat = 0
     private(set) var panes: [PaneController] = []
     private(set) var layout: PaneLayout = .single
     private(set) var activeIndex = 0
-    private var viewModeGroup: NSToolbarItemGroup?
-    private var navigationGroup: NSToolbarItemGroup?
-    private var searchItem: NSSearchToolbarItem?
     private var sidebarItem: NSSplitViewItem?
+    private var activityObserver: NSObjectProtocol?
     private let textUndoManager = UndoManager()
 
     var activePane: PaneController { panes[min(activeIndex, panes.count - 1)] }
 
     init(tab: SessionState.Tab, sidebarWidth: Double? = nil) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
-        window.tabbingMode = .automatic
-        window.tabbingIdentifier = "CubbyBrowser"
-        window.titleVisibility = .visible
+        window.tabbingMode = .disallowed
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.minSize = NSSize(width: 520, height: 320)
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.delegate = self
 
         sidebar.delegate = self
-        let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
+        let sidebarItem = NSSplitViewItem(viewController: sidebar)
         sidebarItem.minimumThickness = 160
         sidebarItem.maximumThickness = 400
         sidebarItem.canCollapse = true
+        sidebarItem.holdingPriority = NSLayoutConstraint.Priority(260)
         self.sidebarItem = sidebarItem
-        container.view = NSView()
+        container.view = FillView()
         let contentItem = NSSplitViewItem(viewController: container)
         contentItem.minimumThickness = 300
         splitController.addSplitViewItem(sidebarItem)
@@ -54,11 +50,10 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
         }
 
         let toolbar = NSToolbar(identifier: "CubbyToolbar")
-        toolbar.delegate = self
-        toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
-        window.toolbarStyle = .unified
+        window.toolbarStyle = .unifiedCompact
+        installTopBar(titlebarHeight: window.frame.height - window.contentLayoutRect.height)
 
         layout = tab.layout
         panes = tab.paths.map(makePane)
@@ -69,6 +64,37 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
 
     required init?(coder: NSCoder) {
         fatalError()
+    }
+
+    private func installTopBar(titlebarHeight: CGFloat) {
+        self.titlebarHeight = titlebarHeight
+        let root = container.view
+        for subview in [topBar, panesView] {
+            subview.translatesAutoresizingMaskIntoConstraints = false
+            root.addSubview(subview)
+        }
+        topBar.searchField.delegate = self
+        topBar.onNavigate = { [weak self] path in
+            self?.activePane.navigate(to: path)
+            self?.activePane.activate()
+        }
+        let top = topBar.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: -titlebarHeight)
+        top.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            top,
+            topBar.topAnchor.constraint(greaterThanOrEqualTo: root.topAnchor),
+            topBar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            topBar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            topBar.heightAnchor.constraint(equalToConstant: max(titlebarHeight, 32)),
+            panesView.topAnchor.constraint(equalTo: topBar.bottomAnchor),
+            panesView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            panesView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            panesView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+        ])
+        activityObserver = NotificationCenter.default.addObserver(forName: .activityChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.topBar.activity = FileActions.activityText }
+        }
+        topBar.activity = FileActions.activityText
     }
 
     var sidebarWidth: Double {
@@ -116,7 +142,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
             pane.view.removeFromSuperview()
             pane.removeFromParent()
         }
-        container.view.subviews.forEach { $0.removeFromSuperview() }
+        panesView.subviews.forEach { $0.removeFromSuperview() }
         var index = 0
         let rows: [NSView] = layout.rows.map { columns in
             let views: [NSView] = (0..<columns).map { _ in
@@ -130,12 +156,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
         }
         let root = rows.count == 1 ? rows[0] : makeSplit(rows, vertical: false)
         root.translatesAutoresizingMaskIntoConstraints = false
-        container.view.addSubview(root)
+        panesView.addSubview(root)
         NSLayoutConstraint.activate([
-            root.topAnchor.constraint(equalTo: container.view.safeAreaLayoutGuide.topAnchor),
-            root.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
-            root.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
-            root.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
+            root.topAnchor.constraint(equalTo: panesView.topAnchor),
+            root.leadingAnchor.constraint(equalTo: panesView.leadingAnchor),
+            root.trailingAnchor.constraint(equalTo: panesView.trailingAnchor),
+            root.bottomAnchor.constraint(equalTo: panesView.bottomAnchor),
         ])
         container.view.layoutSubtreeIfNeeded()
         equalize(root)
@@ -170,12 +196,14 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
         let url = pane.directoryURL
         window?.title = url.path == "/" ? "Macintosh HD" : FileManager.default.displayName(atPath: url.path)
         window?.representedURL = url
-        window?.tab.title = window?.title ?? ""
-        viewModeGroup?.selectedIndex = ViewMode.allCases.firstIndex(of: pane.folderView.mode) ?? 0
-        searchItem?.searchField.stringValue = pane.query
+        topBar.path = url.path
+        topBar.mode = pane.folderView.mode
+        topBar.layout = layout
+        topBar.searchField.stringValue = pane.query
+        if pane.query.isEmpty && !isEditingFilter {
+            topBar.isFilterVisible = false
+        }
         sidebar.reveal(path: pane.path)
-        navigationGroup?.subitems[0].isEnabled = pane.history.canGoBack
-        navigationGroup?.subitems[1].isEnabled = pane.history.canGoForward
     }
 
     func open(_ path: String) {
@@ -189,6 +217,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
     }
 
     func paneDidNavigate(_ pane: PaneController) {
+        closeSettings()
         if pane === activePane {
             updateActive()
         }
@@ -202,17 +231,52 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
         updateActive()
     }
 
-    func paneWantsNewTab(_ pane: PaneController, path: String) {
-        AppDelegate.shared?.openTab(path: path, in: self)
+    func paneWantsNewWindow(_ pane: PaneController, path: String) {
+        AppDelegate.shared?.openWindow(path: path)
     }
 
-    func sidebar(_ sidebar: SidebarController, open url: URL, newTab: Bool) {
-        if newTab {
-            AppDelegate.shared?.openTab(path: url.path, in: self)
+    func sidebar(_ sidebar: SidebarController, open url: URL, newWindow: Bool) {
+        if newWindow {
+            AppDelegate.shared?.openWindow(path: url.path)
         } else {
+            closeSettings()
             activePane.navigate(to: url.path)
             activePane.activate()
         }
+    }
+
+    @objc func showSettings(_ sender: Any?) {
+        if settings != nil {
+            closeSettings()
+            return
+        }
+        let controller = SettingsController()
+        controller.headerHeight = max(titlebarHeight, 32)
+        controller.onClose = { [weak self] in self?.closeSettings() }
+        container.addChild(controller)
+        let view = controller.view
+        view.translatesAutoresizingMaskIntoConstraints = false
+        container.view.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: topBar.topAnchor),
+            view.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: container.view.trailingAnchor),
+            view.bottomAnchor.constraint(equalTo: container.view.bottomAnchor),
+        ])
+        topBar.isHidden = true
+        panesView.isHidden = true
+        settings = controller
+        window?.makeFirstResponder(view)
+    }
+
+    func closeSettings() {
+        guard let settings else { return }
+        settings.view.removeFromSuperview()
+        settings.removeFromParent()
+        self.settings = nil
+        topBar.isHidden = false
+        panesView.isHidden = false
+        activePane.activate()
     }
 
     private static let selectionActions: Set<Selector> = [
@@ -224,13 +288,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
 
     override func supplementalTarget(forAction action: Selector, sender: Any?) -> Any? {
         let sidebarFocused = (window?.firstResponder as? NSView)?.isDescendant(of: sidebar.view) ?? false
-        if sidebarFocused && BrowserWindowController.selectionActions.contains(action) { return nil }
+        if (sidebarFocused || settings != nil) && BrowserWindowController.selectionActions.contains(action) { return nil }
         if activePane.responds(to: action) { return activePane }
         return super.supplementalTarget(forAction: action, sender: sender)
-    }
-
-    override func newWindowForTab(_ sender: Any?) {
-        AppDelegate.shared?.openTab(path: activePane.path, in: self)
     }
 
     @objc func changeLayout(_ sender: NSMenuItem) {
@@ -238,18 +298,18 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
         setLayout(PaneLayout.allCases[sender.tag])
     }
 
-    @objc func changeViewMode(_ sender: NSToolbarItemGroup) {
-        guard ViewMode.allCases.indices.contains(sender.selectedIndex) else { return }
-        activePane.setMode(ViewMode.allCases[sender.selectedIndex])
-    }
-
-    @objc func navigate(_ sender: NSToolbarItemGroup) {
-        if sender.selectedIndex == 0 { activePane.goBack() } else { activePane.goForward() }
+    private var isEditingFilter: Bool {
+        topBar.searchField.currentEditor() != nil
     }
 
     @objc func performFindPanelAction(_ sender: Any?) {
-        guard let searchItem else { return }
-        window?.makeFirstResponder(searchItem.searchField)
+        if topBar.isFilterVisible && isEditingFilter && topBar.searchField.stringValue.isEmpty {
+            topBar.isFilterVisible = false
+            activePane.activate()
+            return
+        }
+        topBar.isFilterVisible = true
+        window?.makeFirstResponder(topBar.searchField)
     }
 
     @objc func goToFolder(_ sender: Any?) {
@@ -279,7 +339,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
     }
 
     @objc func toggleSidebarVisibility(_ sender: Any?) {
-        splitController.toggleSidebar(sender)
+        sidebarItem?.animator().isCollapsed.toggle()
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
@@ -299,12 +359,19 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
 
     func windowWillClose(_ notification: Notification) {
         panes.forEach { $0.model.stop() }
+        activityObserver.map(NotificationCenter.default.removeObserver)
         AppDelegate.shared?.windowClosed(self)
     }
 
     func controlTextDidChange(_ notification: Notification) {
         guard let field = notification.object as? NSSearchField else { return }
         activePane.query = field.stringValue
+    }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        if topBar.searchField.stringValue.isEmpty {
+            topBar.isFilterVisible = false
+        }
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
@@ -319,66 +386,5 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSToo
             return true
         }
         return false
-    }
-
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.toggleSidebar, .sidebarTrackingSeparator, .navigation, .flexibleSpace, .newFolder, .viewMode, .layout, .search]
-    }
-
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        toolbarDefaultItemIdentifiers(toolbar)
-    }
-
-    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
-        switch itemIdentifier {
-        case .navigation:
-            let images = ["chevron.backward", "chevron.forward"].compactMap { NSImage(systemSymbolName: $0, accessibilityDescription: nil) }
-            let group = NSToolbarItemGroup(itemIdentifier: itemIdentifier, images: images, selectionMode: .momentary, labels: ["Back", "Forward"], target: self, action: #selector(navigate(_:)))
-            group.label = "Back/Forward"
-            group.controlRepresentation = .expanded
-            navigationGroup = group
-            return group
-        case .viewMode:
-            let images = ViewMode.allCases.compactMap { NSImage(systemSymbolName: $0.symbolName, accessibilityDescription: $0.title) }
-            let group = NSToolbarItemGroup(itemIdentifier: itemIdentifier, images: images, selectionMode: .selectOne, labels: ViewMode.allCases.map(\.title), target: self, action: #selector(changeViewMode(_:)))
-            group.label = "View"
-            group.controlRepresentation = .expanded
-            group.selectedIndex = ViewMode.allCases.firstIndex(of: panes.first?.folderView.mode ?? .list) ?? 0
-            viewModeGroup = group
-            return group
-        case .layout:
-            let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Layout")
-            item.label = "Layout"
-            item.toolTip = "Pane Layout"
-            let menu = NSMenu()
-            for (index, layout) in PaneLayout.allCases.enumerated() {
-                let entry = NSMenuItem(title: layout.title, action: #selector(changeLayout(_:)), keyEquivalent: "")
-                entry.tag = index
-                entry.target = self
-                entry.image = NSImage(systemSymbolName: layout.symbolName, accessibilityDescription: nil)
-                menu.addItem(entry)
-            }
-            item.menu = menu
-            item.showsIndicator = true
-            return item
-        case .newFolder:
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-            item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: "New Folder")
-            item.label = "New Folder"
-            item.toolTip = "New Folder"
-            item.action = #selector(PaneController.newFolder(_:))
-            return item
-        case .search:
-            let item = NSSearchToolbarItem(itemIdentifier: itemIdentifier)
-            item.searchField.placeholderString = "Filter"
-            item.searchField.delegate = self
-            item.searchField.sendsSearchStringImmediately = true
-            item.resignsFirstResponderWithCancel = true
-            searchItem = item
-            return item
-        default:
-            return nil
-        }
     }
 }

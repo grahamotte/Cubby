@@ -4,6 +4,7 @@ extension Notification.Name {
     static let sidebarChanged = Notification.Name("CubbySidebarChanged")
     static let showHiddenChanged = Notification.Name("CubbyShowHiddenChanged")
     static let listColumnsChanged = Notification.Name("CubbyListColumnsChanged")
+    static let configChanged = Notification.Name("CubbyConfigChanged")
 }
 
 @MainActor
@@ -47,6 +48,22 @@ final class AppState {
             config.showHiddenFiles = newValue
             saveConfig()
             NotificationCenter.default.post(name: .showHiddenChanged, object: nil)
+        }
+    }
+
+    var defaultView: FolderView {
+        get { config.defaultView }
+        set {
+            config.defaultView = newValue
+            saveConfig()
+        }
+    }
+
+    var terminal: String {
+        get { config.terminal }
+        set {
+            config.terminal = newValue
+            saveConfig()
         }
     }
 
@@ -102,6 +119,7 @@ final class AppState {
             configError = nil
             sidebar = SidebarTree(nodes: loaded.sidebar)
             NotificationCenter.default.post(name: .sidebarChanged, object: nil)
+            NotificationCenter.default.post(name: .configChanged, object: nil)
             if hiddenChanged {
                 NotificationCenter.default.post(name: .showHiddenChanged, object: nil)
             }

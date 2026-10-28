@@ -37,7 +37,8 @@ enum MainMenu {
         let menu = NSMenu()
         menu.addItem(item("About Cubby", #selector(NSApplication.orderFrontStandardAboutPanel(_:))))
         menu.addItem(.separator())
-        menu.addItem(item("Open Config File…", #selector(AppDelegate.openConfigFile(_:)), ","))
+        menu.addItem(item("Settings…", #selector(BrowserWindowController.showSettings(_:)), ","))
+        menu.addItem(item("Open Config File…", #selector(AppDelegate.openConfigFile(_:))))
         menu.addItem(.separator())
         let services = NSMenu()
         menu.addItem(submenu("Services", services))
@@ -54,7 +55,6 @@ enum MainMenu {
     private static func fileMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addItem(item("New Window", #selector(AppDelegate.newWindow(_:)), "n"))
-        menu.addItem(item("New Tab", #selector(AppDelegate.newTab(_:)), "t"))
         menu.addItem(item("New Folder", #selector(PaneController.newFolder(_:)), "n", [.command, .shift]))
         menu.addItem(item("New Folder with Selection", #selector(PaneController.newFolderWithSelection(_:)), "n", [.command, .control]))
         menu.addItem(item("New Text File", #selector(PaneController.newFile(_:)), "n", [.command, .option]))
@@ -144,9 +144,6 @@ enum MainMenu {
         let menu = NSMenu()
         menu.addItem(item("Minimize", #selector(NSWindow.performMiniaturize(_:)), "m"))
         menu.addItem(item("Zoom", #selector(NSWindow.performZoom(_:))))
-        menu.addItem(.separator())
-        menu.addItem(item("Show Previous Tab", #selector(NSWindow.selectPreviousTab(_:)), "\t", [.control, .shift]))
-        menu.addItem(item("Show Next Tab", #selector(NSWindow.selectNextTab(_:)), "\t", [.control]))
         menu.addItem(.separator())
         menu.addItem(item("Bring All to Front", #selector(NSApplication.arrangeInFront(_:))))
         return menu

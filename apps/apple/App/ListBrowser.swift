@@ -27,6 +27,21 @@ final class FileOutlineView: NSOutlineView {
         browser?.host?.browserDidBecomeActive()
         super.mouseDown(with: event)
     }
+
+    override func frameOfOutlineCell(atRow row: Int) -> NSRect {
+        var frame = super.frameOfOutlineCell(atRow: row)
+        if !frame.isEmpty { frame.origin.x += 8 }
+        return frame
+    }
+
+    override func frameOfCell(atColumn column: Int, row: Int) -> NSRect {
+        var frame = super.frameOfCell(atColumn: column, row: row)
+        if tableColumns.indices.contains(column), tableColumns[column] === outlineTableColumn {
+            frame.origin.x += 8
+            frame.size.width -= 8
+        }
+        return frame
+    }
 }
 
 final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource, NSOutlineViewDelegate {
@@ -59,14 +74,15 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     override func loadView() {
         outlineView.browser = self
-        outlineView.headerView = NSTableHeaderView()
-        outlineView.usesAlternatingRowBackgroundColors = true
+        outlineView.headerView = QuietHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 30))
         outlineView.allowsMultipleSelection = true
         outlineView.allowsColumnReordering = true
         outlineView.allowsColumnResizing = true
         outlineView.columnAutoresizingStyle = .noColumnAutoresizing
-        outlineView.style = .fullWidth
-        outlineView.rowHeight = 22
+        outlineView.style = .plain
+        outlineView.backgroundColor = .clear
+        outlineView.gridStyleMask = []
+        outlineView.rowHeight = 28
         outlineView.intercellSpacing = NSSize(width: 6, height: 0)
         outlineView.autoresizesOutlineColumn = false
         outlineView.indentationPerLevel = 14
@@ -346,6 +362,10 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         return cell
     }
 
+    func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
+        RoundedRowView()
+    }
+
     func outlineView(_ outlineView: NSOutlineView, typeSelectStringFor tableColumn: NSTableColumn?, item: Any) -> String? {
         tableColumn?.identifier.rawValue == "name" ? (item as? FileItem)?.name : nil
     }
@@ -397,6 +417,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         image.imageScaling = .scaleProportionallyUpOrDown
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 13)
         label.lineBreakMode = .byTruncatingMiddle
         label.cell?.truncatesLastVisibleLine = true
         cell.addSubview(image)
@@ -420,6 +441,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         cell.identifier = id
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .systemFont(ofSize: 12)
         label.textColor = .secondaryLabelColor
         label.alignment = alignment
         label.lineBreakMode = .byTruncatingTail
