@@ -32,11 +32,11 @@ Copy, cut, paste, drag and drop, rename, duplicate, compress, new folder, and Mo
 
 The sidebar holds your folders in groups, and groups can nest. Drag a folder between rows to add it, drag rows to reorder them, and drop files onto a sidebar folder to move them there (hold ⌥ to copy). Right-click for options such as adding or renaming a group.
 
-**Profiles** give you separate sidebars, such as Personal and Work. Add, rename, and pick an icon for each in Settings, and switch between them with the buttons at the bottom of the sidebar.
+**Profiles** give you separate sidebars and themes, such as Personal and Work. Add, rename, and pick an icon and color theme for each in Settings, and switch between them with the buttons at the bottom of the sidebar.
 
 ### Settings
 
-Click the gear at the bottom of the sidebar (⌘,) to choose light, dark, or system appearance, a color theme, whether to show hidden files (and, separately, `.DS_Store` files), and the default view for folders you haven't customized. **Keyboard shortcuts** in settings lists every shortcut.
+Click the gear at the bottom of the sidebar (⌘,) to manage profiles and their themes, choose light, dark, or system appearance, whether to show hidden files (and, separately, `.DS_Store` files), and the default view for folders you haven't customized. **Keyboard shortcuts** in settings lists every shortcut.
 
 Everything is stored as plain JSON in `~/.config/cubby`:
 

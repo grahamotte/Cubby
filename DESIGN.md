@@ -104,7 +104,7 @@ The system is built for themes. A theme is a small set of tinted neutrals plus o
 
 ## Colors
 
-Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Settings > Theme picks the theme and the color scheme (System, Light, or Dark); the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
+Colors come from the active theme. Cubby ships Workbench (the default), Bubblegum, Grove, Ocean, Ember, and Iris. Each profile has its own theme, picked in its Settings > Profiles accordion row, and Settings > Appearance picks the color scheme (System, Light, or Dark) for all profiles; the theme's light or dark variant follows the effective appearance. Extra themes are JSON files in `~/.config/cubby/themes` (`{"name": ..., "light": {...}, "dark": {...}}`, keyed by role, values `#RRGGBB`, `#RRGGBBAA`, or `system` for the macOS accent); missing roles fall back to Workbench. The themes folder is undocumented in the UI on purpose.
 
 The default "Workbench" theme is a barely warm paper neutral with the macOS accent color as its only hue.
 
@@ -192,7 +192,7 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 - **Internal Padding:** rows of title plus description on the left, a native control on the right, 12 pt vertical and 16 pt horizontal, hairline dividers inset 16 pt.
 
 ### Settings Page
-Settings replaces the pane area in the window (never a separate window). Its header shares the top bar's height and position with a close button at the right. Controls are native: switches, borderless pop-ups, and a small slider.
+Settings replaces the pane area in the window (never a separate window). Its header shares the top bar's height and position with a close button at the right. Controls are native: switches, borderless pop-ups, and a small slider. Profiles are accordion rows in one card: a collapsed row shows a chevron, the profile's icon and name, and a small light/dark swatch pair with the theme name; the one expanded row (the active profile when Settings opens) shows the editable icon, name, and delete button above that profile's theme grid.
 
 ## Do's and Don'ts
 

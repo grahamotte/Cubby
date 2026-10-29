@@ -140,6 +140,41 @@ final class AppConfigTests: XCTestCase {
         XCTAssertEqual(config.profiles[0].icon, "house")
     }
 
+    func testMigratesLegacyThemeIntoProfilesAndDropsItOnSave() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"theme":"grove","profiles":[{"name":"A","icon":"star","sidebar":[]},{"name":"B","icon":"moon","theme":"sakura","sidebar":[]}],"profile":1}"#.utf8))
+        XCTAssertEqual(config.profiles.map(\.theme), ["grove", "sakura"])
+        XCTAssertEqual(config.theme, "sakura")
+        let json = try JSONSerialization.jsonObject(with: JSONStore.encode(config)) as? [String: Any]
+        XCTAssertNil(json?["theme"])
+        XCTAssertEqual((json?["profiles"] as? [[String: Any]])?.map { $0["theme"] as? String }, ["grove", "sakura"])
+        let legacySidebar = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"theme":"grove","sidebar":[]}"#.utf8))
+        XCTAssertEqual(legacySidebar.profiles.map(\.theme), ["grove"])
+        let noTheme = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"profiles":[{"name":"A","icon":"star","sidebar":[]}]}"#.utf8))
+        XCTAssertEqual(noTheme.theme, ThemeLibrary.defaultID)
+    }
+
+    func testThemesArePerProfile() {
+        var config = AppConfig.standard
+        XCTAssertTrue(config.setTheme("grove", forProfile: 0))
+        XCTAssertFalse(config.setTheme("grove", forProfile: 0))
+        XCTAssertFalse(config.setTheme("grove", forProfile: 4))
+        XCTAssertEqual(config.addProfile(), 1)
+        XCTAssertEqual(config.themeID(at: 1), "grove")
+        XCTAssertTrue(config.setTheme("sakura", forProfile: 1))
+        XCTAssertEqual(config.theme, "grove")
+        XCTAssertTrue(config.selectProfile(1))
+        XCTAssertEqual(config.theme, "sakura")
+        XCTAssertEqual(config.themeID(at: 9), ThemeLibrary.defaultID)
+    }
+
+    func testKeepsMissingThemeIDs() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"profiles":[{"name":"A","icon":"star","theme":"deleted","sidebar":[]}]}"#.utf8))
+        XCTAssertEqual(config.theme, "deleted")
+        XCTAssertEqual(ThemeLibrary().theme(id: config.theme).id, ThemeLibrary.defaultID)
+        let json = try JSONSerialization.jsonObject(with: JSONStore.encode(config)) as? [String: Any]
+        XCTAssertEqual((json?["profiles"] as? [[String: Any]])?.first?["theme"] as? String, "deleted")
+    }
+
     func testUpdateFoldersAcrossProfiles() {
         let config = AppConfig(showHiddenFiles: false, defaultView: .standard, terminal: "Terminal", appearance: .system, theme: "workbench", profiles: [
             SidebarProfile(name: "A", icon: "star", sidebar: [SidebarNode.folder("/old/a")]),

@@ -12,13 +12,15 @@ final class SidebarProfileTests: XCTestCase {
         XCTAssertEqual(profile.name, "Profile")
         XCTAssertEqual(profile.icon, SidebarProfile.icons[0])
         XCTAssertTrue(profile.tree.nodes.isEmpty)
+        XCTAssertNil(profile.theme)
     }
 
     func testRoundTripsSidebar() throws {
-        let profile = SidebarProfile(name: "Work", icon: "briefcase", sidebar: [SidebarNode.group("Code", [SidebarNode.folder("~/Code")])])
+        let profile = SidebarProfile(name: "Work", icon: "briefcase", theme: "grove", sidebar: [SidebarNode.group("Code", [SidebarNode.folder("~/Code")])])
         let decoded = try JSONDecoder().decode(SidebarProfile.self, from: JSONStore.encode(profile))
         XCTAssertEqual(decoded.name, "Work")
         XCTAssertEqual(decoded.icon, "briefcase")
+        XCTAssertEqual(decoded.theme, "grove")
         XCTAssertEqual(decoded.tree.nodes[0].children[0].path, "~/Code")
         XCTAssertTrue(decoded.tree.nodes[0].parent === decoded.tree.root)
     }
@@ -31,6 +33,8 @@ final class SidebarProfileTests: XCTestCase {
         let second = SidebarProfile.make(after: [SidebarProfile.personal([]), first])
         XCTAssertEqual(second.name, "New Profile 2")
         XCTAssertEqual(second.icon, "house")
+        XCTAssertNil(second.theme)
+        XCTAssertEqual(SidebarProfile.make(after: [], theme: "grove").theme, "grove")
     }
 
     func testMakeCyclesIconsWhenAllAreUsed() {

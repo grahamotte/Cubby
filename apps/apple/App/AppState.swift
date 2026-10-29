@@ -89,10 +89,21 @@ final class AppState {
         themes.theme(id: config.theme)
     }
 
-    func selectTheme(_ id: String) {
-        config.theme = id
+    func setTheme(_ id: String, forProfile index: Int) {
+        guard config.setTheme(id, forProfile: index) else { return }
         saveConfig()
-        themeDidChange()
+        if index == config.profile {
+            themeDidChange()
+        } else {
+            NotificationCenter.default.post(name: .configChanged, object: nil)
+        }
+    }
+
+    private func profilesDidChange(themeBefore: String) {
+        sidebarDidChange()
+        if config.theme != themeBefore {
+            themeDidChange()
+        }
     }
 
     func reloadThemes() {
@@ -128,8 +139,9 @@ final class AppState {
     }
 
     func selectProfile(_ index: Int) {
+        let theme = config.theme
         if config.selectProfile(index) {
-            sidebarDidChange()
+            profilesDidChange(themeBefore: theme)
         }
     }
 
@@ -141,8 +153,9 @@ final class AppState {
     }
 
     func removeProfile(at index: Int) {
+        let theme = config.theme
         if config.removeProfile(at: index) {
-            sidebarDidChange()
+            profilesDidChange(themeBefore: theme)
         }
     }
 
