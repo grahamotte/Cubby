@@ -84,6 +84,20 @@ final class FileOperationsTests: XCTestCase {
         }
     }
 
+    func testItemsInOneOperationNeverReplaceEachOther() throws {
+        let root = makeTemporaryDirectory()
+        let top = makeFile(root, "readme.txt", contents: "top")
+        let sub = makeFile(makeFolder(root, "sub"), "README.txt", contents: "sub")
+        let target = makeFolder(root, "target")
+        var asked: [URL] = []
+        let result = operations.move([top, sub], to: target) { asked.append($0); return .replace }
+        XCTAssertTrue(asked.isEmpty)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.transfers.map(\.destination.lastPathComponent), ["readme.txt", "README 2.txt"])
+        XCTAssertEqual(try String(contentsOf: target.appending(path: "readme.txt"), encoding: .utf8), "top")
+        XCTAssertEqual(try String(contentsOf: target.appending(path: "README 2.txt"), encoding: .utf8), "sub")
+    }
+
     func testRenameValidatesAndAllowsCaseChange() throws {
         let root = makeTemporaryDirectory()
         let file = makeFile(root, "a.txt")

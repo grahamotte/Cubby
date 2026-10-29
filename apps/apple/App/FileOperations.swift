@@ -120,6 +120,7 @@ final class FileOperations {
         var result = OperationResult()
         let directoryPath = directory.standardizedFileURL.path
         let resolvedDirectory = resolved(directory)
+        var placed: Set<String> = []
         for source in sources {
             let sourcePath = resolved(source)
             if resolvedDirectory == sourcePath || resolvedDirectory.hasPrefix(sourcePath + "/") {
@@ -133,6 +134,8 @@ final class FileOperations {
                 continue
             } else if sameDirectory {
                 destination = directory.appending(path: FileNaming.available(source.lastPathComponent, in: directoryPath, copySuffix: true, exists: exists))
+            } else if placed.contains(destination.lastPathComponent.lowercased()) {
+                destination = directory.appending(path: FileNaming.available(source.lastPathComponent, in: directoryPath, exists: exists))
             } else if exists(destination.path) {
                 switch resolve(destination) {
                 case .stop:
@@ -161,6 +164,7 @@ final class FileOperations {
             do {
                 try perform(source, destination)
                 result.transfers.append(Transfer(source: source, destination: destination))
+                placed.insert(destination.lastPathComponent.lowercased())
             } catch {
                 result.errors.append(error)
                 if let replaced {
