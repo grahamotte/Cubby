@@ -516,6 +516,9 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if view.window?.firstResponder is NSTextView, let action = menuItem.action, BrowserWindowController.textEditingBlockedActions.contains(action) {
+            return false
+        }
         let hasSelection = !selectedItems.isEmpty
         switch menuItem.action {
         case #selector(goBack(_:)): return history.canGoBack
