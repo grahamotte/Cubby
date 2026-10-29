@@ -313,9 +313,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         #selector(PaneController.share(_:)), #selector(PaneController.showPackageContents(_:)),
     ]
 
+    static let textEditingBlockedActions = selectionActions.union([#selector(PaneController.pasteAndMove(_:))])
+
     override func supplementalTarget(forAction action: Selector, sender: Any?) -> Any? {
         let sidebarFocused = (window?.firstResponder as? NSView)?.isDescendant(of: sidebar.view) ?? false
         if (sidebarFocused || settings != nil) && BrowserWindowController.selectionActions.contains(action) { return nil }
+        if window?.firstResponder is NSTextView && BrowserWindowController.textEditingBlockedActions.contains(action) { return nil }
         if activePane.responds(to: action) { return activePane }
         return super.supplementalTarget(forAction: action, sender: sender)
     }
