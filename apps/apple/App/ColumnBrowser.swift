@@ -365,6 +365,10 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         return items.indices.contains(row) ? items[row].url as NSURL : nil
     }
 
+    func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
+        DragSupport.showCountOnly(session, count: rowIndexes.count, from: tableView, at: screenPoint)
+    }
+
     func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
         guard let column = column(for: tableView) else { return [] }
         let items = items(in: column)

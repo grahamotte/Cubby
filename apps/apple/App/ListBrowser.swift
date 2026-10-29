@@ -422,6 +422,10 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         (item as? FileItem)?.url as NSURL?
     }
 
+    func outlineView(_ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItems draggedItems: [Any]) {
+        DragSupport.showCountOnly(session, count: draggedItems.count, from: outlineView, at: screenPoint)
+    }
+
     func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
         if let folder = item as? FileItem, folder.isFolder {
             outlineView.setDropItem(folder, dropChildIndex: NSOutlineViewDropOnItemIndex)

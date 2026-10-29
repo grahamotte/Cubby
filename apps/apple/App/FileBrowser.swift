@@ -38,6 +38,16 @@ extension FileBrowser {
 enum DragSupport {
     static let types: [NSPasteboard.PasteboardType] = [.fileURL]
 
+    static func showCountOnly(_ session: NSDraggingSession, count: Int, from view: NSView, at screenPoint: NSPoint) {
+        guard count > 1, let window = view.window else { return }
+        session.animatesToStartingPositionsOnCancelOrFail = false
+        let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
+        session.draggingFormation = .stack
+        session.enumerateDraggingItems(for: view, classes: [NSPasteboardItem.self], searchOptions: [:]) { item, _, _ in
+            item.setDraggingFrame(NSRect(origin: point, size: .zero), contents: nil)
+        }
+    }
+
     static func urls(from info: NSDraggingInfo) -> [URL] {
         (info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
     }

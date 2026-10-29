@@ -393,6 +393,10 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
         item(at: indexPath.item)?.url as NSURL?
     }
 
+    func collectionView(_ collectionView: NSCollectionView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItemsAt indexPaths: Set<IndexPath>) {
+        DragSupport.showCountOnly(session, count: indexPaths.count, from: collectionView, at: screenPoint)
+    }
+
     func collectionView(_ collectionView: NSCollectionView, validateDrop draggingInfo: NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
         let index = proposedIndexPath.pointee.item
         if dropOperation.pointee == .on, let target = item(at: index), target.isFolder {
