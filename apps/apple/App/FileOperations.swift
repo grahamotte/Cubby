@@ -19,6 +19,19 @@ struct OperationResult {
     var stopped = false
 }
 
+extension OperationResult {
+    static let listedErrors = 5
+
+    var errorSummary: (message: String, details: String)? {
+        guard errors.count > 1 else { return nil }
+        var lines = errors.prefix(Self.listedErrors).map(\.localizedDescription)
+        if errors.count > Self.listedErrors {
+            lines.append("…and \((errors.count - Self.listedErrors).formatted()) more.")
+        }
+        return ("\(errors.count.formatted()) problems occurred.", lines.joined(separator: "\n\n"))
+    }
+}
+
 struct OperationError: LocalizedError {
     let message: String
     var errorDescription: String? { message }

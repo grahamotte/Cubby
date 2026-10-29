@@ -258,7 +258,13 @@ enum FileActions {
                 if let index = activities.firstIndex(of: title) { activities.remove(at: index) }
                 NotificationCenter.default.post(name: .activityChanged, object: nil)
                 completion(result)
-                if let error = result.errors.first {
+                if let summary = result.errorSummary {
+                    let alert = NSAlert()
+                    alert.alertStyle = .warning
+                    alert.messageText = summary.message
+                    alert.informativeText = summary.details
+                    alert.runModal()
+                } else if let error = result.errors.first {
                     present(error)
                 }
             }
