@@ -49,6 +49,7 @@ let package = Package(
                 "NavigationHistory.swift",
                 "PaneLayout.swift",
                 "PathWatcher.swift",
+                "ScrollMemory.swift",
                 "SessionState.swift",
                 "Shortcuts.swift",
                 "SidebarNode.swift",

@@ -32,6 +32,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         let model: DirectoryModel?
         let table = ColumnTableView()
         let scroll = NSScrollView()
+        var restoredScroll = false
 
         init(path: String, model: DirectoryModel?) {
             self.path = path
@@ -104,6 +105,26 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     func focus() {
         guard columns.indices.contains(activeIndex) else { return }
         view.window?.makeFirstResponder(columns[activeIndex].table)
+    }
+
+    func scrollAnchor() -> ScrollAnchor? {
+        columns.first.flatMap(scrollAnchor(in:))
+    }
+
+    func restoreScroll(_ anchor: ScrollAnchor) {
+        guard let first = columns.first else { return }
+        restore(anchor, in: first)
+    }
+
+    private func scrollAnchor(in column: Column) -> ScrollAnchor? {
+        let items = items(in: column)
+        return ScrollAnchoring.anchor(in: column.table) { items.indices.contains($0) ? items[$0].path : nil }
+    }
+
+    private func restore(_ anchor: ScrollAnchor, in column: Column) {
+        let items = items(in: column)
+        let rows = Dictionary(items.enumerated().map { ($1.path, $0) }, uniquingKeysWith: { first, _ in first })
+        ScrollAnchoring.restore(anchor, in: column.table) { rows[$0] }
     }
 
     func beginRename(path: String) {
@@ -224,6 +245,12 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
                 guard let self, let column else { return }
                 let selected = Set(self.selected(in: column).map(\.path))
                 column.table.reloadData()
+                if !column.restoredScroll {
+                    column.restoredScroll = true
+                    if let anchor = self.host?.scrollAnchor(for: column.path) {
+                        self.restore(anchor, in: column)
+                    }
+                }
                 self.restore(selected, in: column)
             }
             model.start()
@@ -270,6 +297,9 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     private func truncate(after index: Int) {
         while columns.count > index + 1 {
             let column = columns.removeLast()
+            if column.model != nil {
+                host?.saveScroll(scrollAnchor(in: column), for: column.path)
+            }
             column.model?.stop()
             column.scroll.removeFromSuperview()
             columnViews.removeAll { $0 === column.scroll }

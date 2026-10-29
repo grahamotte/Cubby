@@ -16,6 +16,8 @@ protocol FileBrowserHost: AnyObject {
     func setListIconSize(_ size: Int)
     func browseDirectoryChanged()
     func focusNextPane()
+    func scrollAnchor(for path: String) -> ScrollAnchor?
+    func saveScroll(_ anchor: ScrollAnchor?, for path: String)
 }
 
 @MainActor
@@ -28,11 +30,40 @@ protocol FileBrowser: NSViewController {
     func beginRename(path: String)
     func focus()
     func viewDidChange()
+    func scrollAnchor() -> ScrollAnchor?
+    func restoreScroll(_ anchor: ScrollAnchor)
 }
 
 extension FileBrowser {
     var browseDirectory: URL? { nil }
     func viewDidChange() {}
+}
+
+@MainActor
+enum ScrollAnchoring {
+    static func topInset(_ view: NSView) -> CGFloat {
+        view.enclosingScrollView?.contentView.contentInsets.top ?? 0
+    }
+
+    static func anchor(top: Int, count: Int, offset: CGFloat, path: (Int) -> String?) -> ScrollAnchor? {
+        guard top >= 0, top < count else { return nil }
+        let start = max(top - 4, 0)
+        let rows = (start..<min(top + 9, count)).compactMap(path)
+        return ScrollAnchor(rows: rows, top: top - start, offset: Double(offset))
+    }
+
+    static func anchor(in table: NSTableView, path: (Int) -> String?) -> ScrollAnchor? {
+        let y = table.visibleRect.minY + topInset(table)
+        let top = table.row(at: NSPoint(x: table.visibleRect.minX, y: max(y, 0)))
+        guard top >= 0 else { return nil }
+        return anchor(top: top, count: table.numberOfRows, offset: y - table.rect(ofRow: top).minY, path: path)
+    }
+
+    static func restore(_ anchor: ScrollAnchor, in table: NSTableView, row: (String) -> Int?) {
+        guard let target = anchor.resolve(row), target.index < table.numberOfRows else { return }
+        table.tile()
+        table.scroll(NSPoint(x: table.visibleRect.minX, y: table.rect(ofRow: target.index).minY + CGFloat(target.offset) - topInset(table)))
+    }
 }
 
 @MainActor
