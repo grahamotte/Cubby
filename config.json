@@ -36,7 +36,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.4.0",
+    "build": "0.5.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -67,7 +67,7 @@
       },
       "android": {}
     },
-    "version": "0.4.0",
-    "whatsNew": "A sort menu in the top bar, an optional Count column in list view, a Keyboard Shortcuts page in settings, Cmd-Left and Cmd-Right for Back and Forward, a setting to show .DS_Store files with hidden files, simpler settings, and cleaner multi-row selection."
+    "version": "0.5.0",
+    "whatsNew": "Image and video previews in list view with Cmd-Plus and Cmd-Minus sizing, Count and Random sorts, bold filter matches, remembered scroll positions, a theme per profile, theme-colored controls, in-place renaming in the icon view, column dividers, and lighter multi-file drags. The gallery view has been removed."
   }
 }
