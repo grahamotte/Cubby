@@ -68,7 +68,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         Column(id: "added", title: "Date Added", sort: .added, width: 170, alignment: .left, hiddenByDefault: true),
         Column(id: "created", title: "Date Created", sort: .created, width: 170, alignment: .left, hiddenByDefault: true),
         Column(id: "size", title: "Size", sort: .size, width: 80, alignment: .right, hiddenByDefault: false),
-        Column(id: "count", title: "Count", sort: nil, width: 70, alignment: .right, hiddenByDefault: true),
+        Column(id: "count", title: "Count", sort: .count, width: 70, alignment: .right, hiddenByDefault: true),
         Column(id: "kind", title: "Kind", sort: .kind, width: 130, alignment: .left, hiddenByDefault: false),
     ]
 

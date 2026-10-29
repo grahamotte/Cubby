@@ -43,6 +43,29 @@ final class DirectoryModelTests: XCTestCase {
         model.stop()
     }
 
+    func testSortsByCountAsCountsArrive() {
+        let directory = makeTemporaryDirectory()
+        let many = makeFolder(directory, "many")
+        for index in 0..<3 { makeFile(many, "f\(index)") }
+        let few = makeFolder(directory, "few")
+        makeFile(few, "f")
+        makeFolder(directory, "empty")
+        makeFile(directory, "file.txt")
+        let model = DirectoryModel(path: directory.path, view: FolderView(mode: .list, sort: .count, ascending: false, iconSize: 80), visibility: .standard)
+        waitForChange(model, where: { _ in names(model.items) == ["many", "few", "empty", "file.txt"] }) { model.start() }
+        XCTAssertNotNil(model.counter)
+
+        model.ascending = true
+        waitForChange(model) { model.applyPresentation() }
+        XCTAssertEqual(names(model.items), ["empty", "few", "many", "file.txt"])
+
+        waitForChange(model, where: { _ in names(model.items) == ["empty", "many", "few", "file.txt"] }) {
+            for index in 0..<5 { makeFile(few, "g\(index)") }
+        }
+        model.stop()
+        XCTAssertNil(model.counter)
+    }
+
     func testReloadsWhenDirectoryChanges() {
         let directory = makeTemporaryDirectory()
         makeFile(directory, "a.txt")

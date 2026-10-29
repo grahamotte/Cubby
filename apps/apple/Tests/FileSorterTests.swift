@@ -24,6 +24,14 @@ final class FileSorterTests: XCTestCase {
         XCTAssertEqual(Array(names(FileSorter.sorted(items, by: .kind, ascending: true)).suffix(2)), ["a.txt", "z.txt"])
     }
 
+    func testSortsByCountWithUncountedItemsLast() {
+        let items = [item("b.txt"), item("big", directory: true), item("small", directory: true), item("pending", directory: true), item("a.txt"), item("mid", directory: true), item("same", directory: true)]
+        let counts = ["/tmp/big": 30, "/tmp/small": 1, "/tmp/mid": 5, "/tmp/same": 5, "/tmp/b.txt": 99]
+        XCTAssertEqual(names(FileSorter.sorted(items, by: .count, ascending: true, counts: counts)), ["small", "mid", "same", "big", "a.txt", "b.txt", "pending"])
+        XCTAssertEqual(names(FileSorter.sorted(items, by: .count, ascending: false, counts: counts)), ["big", "mid", "same", "small", "a.txt", "b.txt", "pending"])
+        XCTAssertEqual(names(FileSorter.sorted(items, by: .count, ascending: true)), ["a.txt", "b.txt", "big", "mid", "pending", "same", "small"])
+    }
+
     func testRandomSortIsDeterministicForASeed() {
         let items = (0..<50).map { item("file\($0)") }
         let first = names(FileSorter.sorted(items, by: .random, ascending: true, seed: 20261028))

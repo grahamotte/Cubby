@@ -3,8 +3,18 @@ import Foundation
 enum FileSorter {
     static let nameOptions: String.CompareOptions = [.caseInsensitive, .numeric, .widthInsensitive, .forcedOrdering]
 
-    static func sorted(_ items: [FileItem], by key: SortKey, ascending: Bool, seed: UInt64 = 0) -> [FileItem] {
+    static func sorted(_ items: [FileItem], by key: SortKey, ascending: Bool, seed: UInt64 = 0, counts: [String: Int] = [:]) -> [FileItem] {
         switch key {
+        case .count:
+            let values = items.map { $0.isFolder ? counts[$0.path] : nil }
+            return sortIndexed(items, ascending: ascending) { lhs, rhs in
+                switch (values[lhs], values[rhs]) {
+                case (nil, nil): .orderedSame
+                case (nil, _): ascending ? .orderedDescending : .orderedAscending
+                case (_, nil): ascending ? .orderedAscending : .orderedDescending
+                case let (left?, right?): left == right ? .orderedSame : (left < right ? .orderedAscending : .orderedDescending)
+                }
+            }
         case .random:
             let ranks = items.map { randomRank($0.name, seed: seed) }
             return sortIndexed(items, ascending: true) { lhs, rhs in

@@ -26,6 +26,9 @@ final class DirectoryModel {
     private var expanded: [String: FileItem] = [:]
     private var lastLoadDuration: TimeInterval = 0
     private var reloadScheduled = false
+    private var countSortScheduled = false
+    private var loading = false
+    private(set) var counter: FolderCounter?
     private var stopped = false
     private static let queue = DispatchQueue(label: "cubby.directory", qos: .userInitiated, attributes: .concurrent)
 
@@ -43,6 +46,7 @@ final class DirectoryModel {
     func stop() {
         generation += 1
         stopped = true
+        counter = nil
         watcher = nil
         childWatchers = [:]
     }
@@ -54,13 +58,15 @@ final class DirectoryModel {
 
     func applyPresentation() {
         generation += 1
+        loading = false
         let token = generation
         let all = allItems
-        let sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
         let expandedItems = Array(expanded.values)
+        let counts = countSnapshot(allItems + expandedItems.flatMap { $0.children ?? [] })
+        let sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
         Self.queue.async {
-            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed)
-            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed) }) }
+            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts)
+            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts) }) }
             DispatchQueue.main.async {
                 guard token == self.generation else { return }
                 for (item, sorted) in children {
@@ -89,14 +95,15 @@ final class DirectoryModel {
     }
 
     private func loadChildren(of item: FileItem) {
-        let sort = sort, ascending = ascending, visibility = visibility, seed = seed
+        let sort = sort, ascending = ascending, visibility = visibility, seed = seed, counts = knownCounts
         let path = item.path
         Self.queue.async {
             let read = (try? DirectoryReader.read(path)) ?? []
-            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed)
+            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts)
             DispatchQueue.main.async {
                 guard !self.stopped, self.expanded[path] === item else { return }
                 item.children = DirectoryListing.reconcile(old: item.children ?? [], new: read, visible: visible).visible
+                self.requestCounts(item.children ?? [])
                 if self.childWatchers[path] == nil {
                     self.childWatchers[path] = PathWatcher(path: path) { [weak self] in
                         guard let self, let item = self.expanded[path] else { return }
@@ -104,6 +111,45 @@ final class DirectoryModel {
                     }
                 }
                 self.onChange?(.children(item))
+            }
+        }
+    }
+
+    private var knownCounts: [String: Int] {
+        guard sort == .count else { return [:] }
+        counter?.visibility = visibility
+        return counter?.knownCounts ?? [:]
+    }
+
+    private func countSnapshot(_ items: [FileItem]) -> [String: Int] {
+        requestCounts(items)
+        return knownCounts
+    }
+
+    private func requestCounts(_ items: [FileItem]) {
+        guard sort == .count, !stopped else { return }
+        let counter = counter ?? FolderCounter(root: path, visibility: visibility)
+        if self.counter == nil {
+            counter.onChange = { [weak self] in self?.scheduleCountSort() }
+            self.counter = counter
+        }
+        counter.visibility = visibility
+        for item in items where item.isFolder {
+            _ = counter.count(for: item.path)
+        }
+    }
+
+    private func scheduleCountSort() {
+        guard sort == .count, !countSortScheduled else { return }
+        countSortScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + min(max(lastLoadDuration * 3, 0.2), 2)) { [weak self] in
+            guard let self else { return }
+            self.countSortScheduled = false
+            guard self.sort == .count, !self.stopped else { return }
+            if self.loading {
+                self.scheduleCountSort()
+            } else {
+                self.applyPresentation()
             }
         }
     }
@@ -122,8 +168,9 @@ final class DirectoryModel {
     private func load(change: Change) {
         generation += 1
         let token = generation
-        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
+        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed, counts = knownCounts
         let started = Date()
+        loading = true
         Self.queue.async { [weak self] in
             let result: Result<[FileItem], DirectoryReader.ReadError>
             do {
@@ -134,15 +181,17 @@ final class DirectoryModel {
             } catch {
                 result = .failure(DirectoryReader.ReadError(path: path, code: EIO))
             }
-            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed) } ?? []
+            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts) } ?? []
             DispatchQueue.main.async {
                 guard let self, token == self.generation, !self.stopped else { return }
+                self.loading = false
                 self.lastLoadDuration = Date().timeIntervalSince(started)
                 switch result {
                 case .success(let read):
                     let reconciled = DirectoryListing.reconcile(old: self.allItems, new: read, visible: visible)
                     self.allItems = reconciled.all
                     self.items = reconciled.visible
+                    self.requestCounts(reconciled.visible)
                     self.error = nil
                     if self.watcher == nil {
                         self.watcher = PathWatcher(path: path) { [weak self] in self?.scheduleReload() }

@@ -33,6 +33,7 @@ enum SortKey: String, Codable, CaseIterable {
     case created
     case size
     case kind
+    case count
     case random
 
     var title: String {
@@ -43,6 +44,7 @@ enum SortKey: String, Codable, CaseIterable {
         case .created: "Date Created"
         case .size: "Size"
         case .kind: "Kind"
+        case .count: "Count"
         case .random: "Random"
         }
     }
@@ -54,7 +56,7 @@ enum SortKey: String, Codable, CaseIterable {
     var defaultAscending: Bool {
         switch self {
         case .name, .kind, .random: true
-        case .modified, .added, .created, .size: false
+        case .modified, .added, .created, .size, .count: false
         }
     }
 }

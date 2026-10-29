@@ -62,6 +62,10 @@ final class FolderCounter {
         return nil
     }
 
+    var knownCounts: [String: Int] {
+        counts.filter { $0.value >= 0 }
+    }
+
     func isCounting(_ path: String) -> Bool {
         pending.contains(path)
     }
