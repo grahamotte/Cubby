@@ -20,6 +20,13 @@ final class FileNamingTests: XCTestCase {
         XCTAssertEqual(FileNaming.split("noext").0, "noext")
     }
 
+    func testBecomesHidden() {
+        XCTAssertTrue(FileNaming.becomesHidden(renaming: "notes.txt", to: ".notes.txt"))
+        XCTAssertFalse(FileNaming.becomesHidden(renaming: ".zshrc", to: ".zprofile"))
+        XCTAssertFalse(FileNaming.becomesHidden(renaming: ".zshrc", to: "zshrc"))
+        XCTAssertFalse(FileNaming.becomesHidden(renaming: "a.txt", to: "b.txt"))
+    }
+
     func testValidation() {
         XCTAssertNil(FileNaming.validationError(for: "ok.txt"))
         XCTAssertNotNil(FileNaming.validationError(for: " "))
