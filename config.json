@@ -36,7 +36,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.7.0",
+    "build": "0.7.1",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -67,7 +67,7 @@
       },
       "android": {}
     },
-    "version": "0.7.0",
-    "whatsNew": "Each profile now keeps its own view: switching profiles brings back that profile's folders and pane layout, and every profile's view is restored when Cubby reopens. A profile you haven't opened in a window yet starts at its first sidebar folder."
+    "version": "0.7.1",
+    "whatsNew": "In icon view, the left and right arrow keys now wrap to the previous or next row and scroll to keep the selection in view."
   }
 }

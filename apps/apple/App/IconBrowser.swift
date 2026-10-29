@@ -143,6 +143,14 @@ class FileCollectionView: NSCollectionView {
         super.keyDown(with: event)
     }
 
+    override func moveRight(_ sender: Any?) {
+        if browser?.step(1) != true { super.moveRight(sender) }
+    }
+
+    override func moveLeft(_ sender: Any?) {
+        if browser?.step(-1) != true { super.moveLeft(sender) }
+    }
+
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = convert(event.locationInWindow, from: nil)
         if let indexPath = indexPathForItem(at: point) {
@@ -299,6 +307,20 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func focus() {
         view.window?.makeFirstResponder(collectionView)
+    }
+
+    func step(_ offset: Int) -> Bool {
+        let selection = collectionView.selectionIndexPaths.map(\.item)
+        guard let current = offset > 0 ? selection.max() : selection.min(), items.indices.contains(current + offset) else { return false }
+        let indexPath = IndexPath(item: current + offset, section: 0)
+        collectionView.selectionIndexPaths = [indexPath]
+        collectionView.layoutSubtreeIfNeeded()
+        if let frame = collectionView.layoutAttributesForItem(at: indexPath)?.frame {
+            let inset = ScrollAnchoring.topInset(collectionView)
+            collectionView.scrollToVisible(NSRect(x: frame.minX, y: frame.minY - inset, width: frame.width, height: frame.height + inset))
+        }
+        selectionChanged()
+        return true
     }
 
     private var visibleArea: NSRect {
