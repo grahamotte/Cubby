@@ -76,7 +76,7 @@ enum DragSupport {
         let point = view.convert(window.convertPoint(fromScreen: screenPoint), from: nil)
         session.draggingFormation = .stack
         session.enumerateDraggingItems(for: view, classes: [NSPasteboardItem.self], searchOptions: [:]) { item, _, _ in
-            item.setDraggingFrame(NSRect(origin: point, size: .zero), contents: nil)
+            item.setDraggingFrame(NSRect(origin: point, size: NSSize(width: 1, height: 1)), contents: NSImage(size: NSSize(width: 1, height: 1)))
         }
     }
 
