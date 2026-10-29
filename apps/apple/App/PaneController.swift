@@ -355,6 +355,14 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
 
     func rename(_ item: FileItem, to name: String) {
         guard name != item.name else { return }
+        if FileNaming.becomesHidden(renaming: item.name, to: name) && !AppState.shared.showHiddenFiles {
+            let alert = NSAlert()
+            alert.messageText = "Are you sure you want to use a name that begins with a dot “.”?"
+            alert.informativeText = "These names are reserved for the system. If you continue, “\(name)” will be hidden."
+            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: "Use “.”")
+            guard alert.runModal() == .alertSecondButtonReturn else { return }
+        }
         if let renamed = FileActions.rename(item.url, to: name) {
             reveal([renamed])
         }

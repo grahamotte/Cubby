@@ -24,6 +24,10 @@ enum FileNaming {
         return nil
     }
 
+    static func becomesHidden(renaming name: String, to newName: String) -> Bool {
+        newName.hasPrefix(".") && !name.hasPrefix(".")
+    }
+
     static func split(_ name: String) -> (String, String) {
         let ext = (name as NSString).pathExtension
         guard !ext.isEmpty, !name.hasPrefix(".") || name.dropFirst().contains(".") else { return (name, "") }
