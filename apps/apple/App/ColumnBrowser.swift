@@ -45,6 +45,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     private let scrollView = NSScrollView()
     private let document = FlippedView()
     private var columnViews: [NSView] = []
+    private var dividers: [FillView] = []
     private var columns: [Column] = []
     private var previewView: NSView?
     private var activeIndex = 0
@@ -199,7 +200,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     private func makeColumn(path: String, model: DirectoryModel?) -> Column {
         let column = Column(path: path, model: model)
         let tableColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        tableColumn.width = ColumnBrowser.columnWidth - 4
+        tableColumn.width = ColumnBrowser.columnWidth - 5
         column.table.addTableColumn(tableColumn)
         column.table.headerView = nil
         column.table.browser = self
@@ -218,16 +219,6 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         column.scroll.hasVerticalScroller = true
         column.scroll.autohidesScrollers = true
         column.scroll.drawsBackground = false
-        let separator = NSBox()
-        separator.boxType = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        column.scroll.addSubview(separator)
-        NSLayoutConstraint.activate([
-            separator.trailingAnchor.constraint(equalTo: column.scroll.trailingAnchor),
-            separator.topAnchor.constraint(equalTo: column.scroll.topAnchor),
-            separator.bottomAnchor.constraint(equalTo: column.scroll.bottomAnchor),
-            separator.widthAnchor.constraint(equalToConstant: 1),
-        ])
         if let model {
             model.onChange = { [weak self, weak column] _ in
                 guard let self, let column else { return }
@@ -249,11 +240,29 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
 
     private func layoutColumns() {
         let height = scrollView.contentSize.height
+        let tables = columnViews.filter { $0 !== previewView }
+        while dividers.count < tables.count {
+            let divider = FillView()
+            divider.color = Theme.divider
+            document.addSubview(divider)
+            dividers.append(divider)
+        }
+        while dividers.count > tables.count {
+            dividers.removeLast().removeFromSuperview()
+        }
         var x: CGFloat = 0
+        var index = 0
         for view in columnViews {
-            let width = view === previewView ? ColumnBrowser.columnWidth * 1.4 : ColumnBrowser.columnWidth
-            view.frame = NSRect(x: x, y: 0, width: width, height: height)
-            x += width
+            if view === previewView {
+                let width = ColumnBrowser.columnWidth * 1.4
+                view.frame = NSRect(x: x, y: 0, width: width, height: height)
+                x += width
+            } else {
+                view.frame = NSRect(x: x, y: 0, width: ColumnBrowser.columnWidth - 1, height: height)
+                dividers[index].frame = NSRect(x: x + ColumnBrowser.columnWidth - 1, y: 0, width: 1, height: height)
+                index += 1
+                x += ColumnBrowser.columnWidth
+            }
         }
         document.frame = NSRect(x: 0, y: 0, width: max(x, scrollView.contentSize.width), height: height)
     }
