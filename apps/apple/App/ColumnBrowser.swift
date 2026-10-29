@@ -33,6 +33,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         let table = ColumnTableView()
         let scroll = NSScrollView()
         var restoredScroll = false
+        var items: [FileItem] = []
 
         init(path: String, model: DirectoryModel?) {
             self.path = path
@@ -88,6 +89,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         }
         guard let first = columns.first else { return }
         let selected = Set(self.selected(in: first).map(\.path))
+        first.items = host.model.items
         first.table.reloadData()
         restore(selected, in: first)
     }
@@ -201,7 +203,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     }
 
     private func items(in column: Column) -> [FileItem] {
-        (column.model ?? host?.model)?.items ?? []
+        column.items
     }
 
     private func selected(in column: Column) -> [FileItem] {
@@ -244,6 +246,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
             model.onChange = { [weak self, weak column] _ in
                 guard let self, let column else { return }
                 let selected = Set(self.selected(in: column).map(\.path))
+                column.items = column.model?.items ?? []
                 column.table.reloadData()
                 if !column.restoredScroll {
                     column.restoredScroll = true
