@@ -6,6 +6,7 @@ extension Notification.Name {
     static let listColumnsChanged = Notification.Name("CubbyListColumnsChanged")
     static let configChanged = Notification.Name("CubbyConfigChanged")
     static let themeChanged = Notification.Name("CubbyThemeChanged")
+    static let profileRemoved = Notification.Name("CubbyProfileRemoved")
 }
 
 @MainActor
@@ -155,8 +156,14 @@ final class AppState {
     func removeProfile(at index: Int) {
         let theme = config.theme
         if config.removeProfile(at: index) {
+            NotificationCenter.default.post(name: .profileRemoved, object: nil, userInfo: ["index": index])
             profilesDidChange(themeBefore: theme)
         }
+    }
+
+    func startTab(forProfile index: Int) -> SessionState.Tab {
+        let path = profiles.indices.contains(index) ? profiles[index].startPath : nil
+        return SessionState.Tab(layout: .single, paths: [path ?? NSHomeDirectory()], activePane: 0)
     }
 
     func renameProfile(at index: Int, to name: String) {

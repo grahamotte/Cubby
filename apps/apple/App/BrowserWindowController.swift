@@ -32,12 +32,14 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
     private(set) var layout: PaneLayout = .single
     private(set) var activeIndex = 0
     private var sidebarItem: NSSplitViewItem?
-    private var activityObserver: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
+    private(set) var profileTabs: ProfileTabs
     private let textUndoManager = UndoManager()
 
     var activePane: PaneController { panes[min(activeIndex, panes.count - 1)] }
 
-    init(tab: SessionState.Tab, sidebarWidth: Double? = nil) {
+    init(tabs: ProfileTabs, sidebarWidth: Double? = nil) {
+        profileTabs = tabs
         let window = BrowserWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.tabbingMode = .disallowed
         window.titleVisibility = .hidden
@@ -80,11 +82,20 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         window.toolbarStyle = .unifiedCompact
         installTopBar(titlebarHeight: window.frame.height - window.contentLayoutRect.height)
 
-        layout = tab.layout
-        panes = tab.paths.map(makePane)
-        activeIndex = min(max(tab.activePane, 0), panes.count - 1)
-        rebuildLayout()
-        updateActive()
+        let profile = AppState.shared.profile
+        showTab(tabs.tab(for: profile) ?? AppState.shared.startTab(forProfile: profile))
+        let center = NotificationCenter.default
+        observers += [
+            center.addObserver(forName: .profileRemoved, object: nil, queue: .main) { [weak self] note in
+                MainActor.assumeIsolated {
+                    guard let index = note.userInfo?["index"] as? Int else { return }
+                    self?.profileTabs.remove(index)
+                }
+            },
+            center.addObserver(forName: .sidebarChanged, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.profileDidChange() }
+            },
+        ]
     }
 
     required init?(coder: NSCoder) {
@@ -116,9 +127,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
             panesView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             panesView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
-        activityObserver = NotificationCenter.default.addObserver(forName: .activityChanged, object: nil, queue: .main) { [weak self] _ in
+        observers.append(NotificationCenter.default.addObserver(forName: .activityChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.topBar.activity = FileActions.activityText }
-        }
+        })
         topBar.activity = FileActions.activityText
     }
 
@@ -129,6 +140,31 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
 
     var tabState: SessionState.Tab {
         SessionState.Tab(layout: layout, paths: panes.map(\.path), activePane: activeIndex)
+    }
+
+    private func showTab(_ tab: SessionState.Tab) {
+        let normalized = tab.normalized(home: NSHomeDirectory()) { FileManager.default.fileExists(atPath: $0) }
+        for pane in panes {
+            pane.model.stop()
+            pane.view.removeFromSuperview()
+            pane.removeFromParent()
+        }
+        layout = normalized.layout
+        panes = normalized.paths.map(makePane)
+        activeIndex = normalized.activePane
+        rebuildLayout()
+        updateActive()
+    }
+
+    private func profileDidChange() {
+        let profile = AppState.shared.profile
+        guard profile != profileTabs.profile else { return }
+        let tab = profileTabs.select(profile, live: tabState) ?? AppState.shared.startTab(forProfile: profile)
+        showTab(tab)
+        if settings == nil {
+            activePane.activate()
+        }
+        AppDelegate.shared?.saveSessionSoon()
     }
 
     private func makePane(_ path: String) -> PaneController {
@@ -389,7 +425,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
 
     func windowWillClose(_ notification: Notification) {
         panes.forEach { $0.model.stop() }
-        activityObserver.map(NotificationCenter.default.removeObserver)
+        observers.forEach(NotificationCenter.default.removeObserver)
         AppDelegate.shared?.windowClosed(self)
     }
 
