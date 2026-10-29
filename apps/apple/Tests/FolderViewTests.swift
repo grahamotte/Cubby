@@ -27,6 +27,9 @@ final class FolderViewTests: XCTestCase {
         XCTAssertTrue(SortKey.kind.defaultAscending)
         XCTAssertFalse(SortKey.modified.defaultAscending)
         XCTAssertFalse(SortKey.size.defaultAscending)
+        XCTAssertTrue(SortKey.name.hasDirection)
+        XCTAssertFalse(SortKey.random.hasDirection)
+        XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: Data(#"{"sort":"random"}"#.utf8)).sort, .random)
         XCTAssertEqual(Set(ViewMode.allCases.map(\.title)).count, ViewMode.allCases.count)
     }
 }

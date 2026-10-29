@@ -482,8 +482,8 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             menuItem.state = isCurrent ? .on : .off
             return true
         case #selector(setSortDirection(_:)):
-            menuItem.state = (menuItem.tag == 0) == folderView.ascending ? .on : .off
-            return true
+            menuItem.state = folderView.sort.hasDirection && (menuItem.tag == 0) == folderView.ascending ? .on : .off
+            return folderView.sort.hasDirection
         case #selector(biggerIcons(_:)), #selector(smallerIcons(_:)):
             return folderView.mode == .icons
         case #selector(showPackageContents(_:)):
