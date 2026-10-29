@@ -71,6 +71,19 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertTrue(exists(inner))
     }
 
+    func testFailedReplacePutsBackReplacedItem() throws {
+        let root = makeTemporaryDirectory()
+        let missing = root.appending(path: "a.txt")
+        let target = makeFolder(root, "target")
+        let existing = makeFile(target, "a.txt", contents: "old")
+        for transfer in [operations.move, operations.copy] {
+            let result = transfer([missing], target) { _ in .replace }
+            XCTAssertEqual(result.errors.count, 1)
+            XCTAssertTrue(result.transfers.isEmpty)
+            XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "old")
+        }
+    }
+
     func testRenameValidatesAndAllowsCaseChange() throws {
         let root = makeTemporaryDirectory()
         let file = makeFile(root, "a.txt")
