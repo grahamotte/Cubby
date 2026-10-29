@@ -35,6 +35,7 @@ let package = Package(
             ],
             sources: [
                 "AppConfig.swift",
+                "Archive.swift",
                 "ConfigStore.swift",
                 "CubbyPaths.swift",
                 "DirectoryListing.swift",

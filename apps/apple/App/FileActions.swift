@@ -102,27 +102,20 @@ enum FileActions {
     }
 
     static func compress(_ urls: [URL], completion: @escaping (URL) -> Void) {
-        guard let first = urls.first else { return }
-        let directory = first.deletingLastPathComponent()
-        let baseName = urls.count == 1 ? first.lastPathComponent : "Archive"
-        let name = FileNaming.available(baseName + ".zip", in: directory.path)
-        let destination = directory.appending(path: name)
+        guard let archive = Archive.plan(for: urls), let first = urls.first else { return }
         run("Compressing \(itemCount(urls.count))…") { _ in
             let process = Process()
-            if urls.count == 1 {
-                process.executableURL = URL(filePath: "/usr/bin/ditto")
-                process.arguments = ["-c", "-k", "--sequesterRsrc", "--keepParent", first.path, destination.path]
-            } else {
-                process.executableURL = URL(filePath: "/usr/bin/zip")
+            process.executableURL = archive.executable
+            process.arguments = archive.arguments
+            if let directory = archive.directory {
                 process.currentDirectoryURL = directory
-                process.arguments = ["-r", "-y", "-q", destination.path] + urls.map(\.lastPathComponent)
             }
             var result = OperationResult()
             do {
                 try process.run()
                 process.waitUntilExit()
                 if process.terminationStatus == 0 {
-                    result.transfers = [Transfer(source: first, destination: destination)]
+                    result.transfers = [Transfer(source: first, destination: archive.destination)]
                 } else {
                     result.errors = [OperationError(message: "Compressing failed (exit \(process.terminationStatus)).")]
                 }
