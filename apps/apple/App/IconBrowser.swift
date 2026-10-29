@@ -13,7 +13,6 @@ final class FileTileItem: NSCollectionViewItem {
     private var iconSize: CGFloat = 64
     private var labelWidth: CGFloat = 0
     private var labelSelected = false
-    var showsLabel = true
 
     override func loadView() {
         view = NSView()
@@ -32,15 +31,10 @@ final class FileTileItem: NSCollectionViewItem {
     override func viewDidLayout() {
         super.viewDidLayout()
         let bounds = view.bounds
-        let labelHeight = showsLabel ? FileTileItem.labelHeight : 0
+        let labelHeight = FileTileItem.labelHeight
         let side = max(min(iconSize, bounds.width - 16, bounds.height - labelHeight - 16), 0)
         thumbnail.frame = NSRect(x: ((bounds.width - side) / 2).rounded(), y: (labelHeight + (bounds.height - labelHeight - side) / 2).rounded(), width: side, height: side)
         selectionBackground.frame = thumbnail.frame.insetBy(dx: -6, dy: -6)
-        label.isHidden = !showsLabel
-        guard showsLabel else {
-            labelBackground.isHidden = true
-            return
-        }
         let width = labelFrame.width
         if width != labelWidth {
             labelWidth = width
@@ -102,7 +96,7 @@ final class FileTileItem: NSCollectionViewItem {
         let focused = (collectionView as? FileCollectionView)?.isFocused == true
         selectionBackground.isHidden = !selected
         labelBackground.color = focused ? Theme.accent : Theme.inactiveSelection
-        labelBackground.isHidden = !selected || !showsLabel
+        labelBackground.isHidden = !selected
         let emphasized = selected && focused
         if emphasized != labelSelected {
             labelSelected = emphasized

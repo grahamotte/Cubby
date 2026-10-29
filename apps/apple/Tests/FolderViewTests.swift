@@ -15,6 +15,13 @@ final class FolderViewTests: XCTestCase {
         XCTAssertEqual(view.iconSize, FolderView.standard.iconSize)
     }
 
+    func testDecodesRemovedGalleryAndUnknownModesAsIcons() throws {
+        XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: Data(#"{"mode":"gallery","sort":"size","ascending":false}"#.utf8)), FolderView(mode: .icons, sort: .size, ascending: false, iconSize: FolderView.standard.iconSize))
+        XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: Data(#"{"mode":"bogus"}"#.utf8)).mode, .icons)
+        XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: Data(#"{"mode":"columns"}"#.utf8)).mode, .columns)
+        XCTAssertEqual(ViewMode.allCases, [.list, .icons, .columns])
+    }
+
     func testDefaultSortDirections() {
         XCTAssertTrue(SortKey.name.defaultAscending)
         XCTAssertTrue(SortKey.kind.defaultAscending)
