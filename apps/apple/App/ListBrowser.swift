@@ -72,6 +72,8 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         Column(id: "kind", title: "Kind", sort: .kind, width: 130, alignment: .left, hiddenByDefault: false),
     ]
 
+    static let nameFont = NSFont.systemFont(ofSize: 13)
+
     weak var host: FileBrowserHost?
     let outlineView = FileOutlineView()
     private let scrollView = NSScrollView()
@@ -189,7 +191,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         var frame = outlineView.convert(label.frame, from: cell)
         frame.size.width = max(frame.width, 120)
         frame = frame.insetBy(dx: -2, dy: -1)
-        renameField.font = label.font
+        renameField.font = ListBrowser.nameFont
         renameField.onCommit = { [weak self] name in
             self?.host?.rename(item, to: name)
             self?.focus()
@@ -380,7 +382,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         let id = tableColumn.identifier
         if id.rawValue == "name" {
             let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NSTableCellView) ?? makeNameCell(id)
-            cell.textField?.stringValue = item.name
+            cell.textField?.attributedStringValue = FileFormat.name(item.name, query: host?.model.query ?? "", font: ListBrowser.nameFont, color: Theme.text)
             cell.imageView?.image = IconCache.shared.icon(for: item)
             cell.alphaValue = item.isHidden || isCut(item) ? 0.5 : 1
             return cell
@@ -458,7 +460,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         image.imageScaling = .scaleProportionallyUpOrDown
         let label = NSTextField(labelWithString: "")
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = .systemFont(ofSize: 13)
+        label.font = ListBrowser.nameFont
         label.textColor = Theme.text
         label.lineBreakMode = .byTruncatingMiddle
         label.cell?.truncatesLastVisibleLine = true

@@ -96,6 +96,14 @@ enum FileFormat {
         count.map { NumberFormatter.localizedString(from: NSNumber(value: $0), number: .decimal) } ?? "--"
     }
 
+    static func name(_ name: String, query: String, font: NSFont, color: NSColor) -> NSAttributedString {
+        let style = NSMutableParagraphStyle()
+        style.lineBreakMode = .byTruncatingMiddle
+        let text = NSMutableAttributedString(string: name, attributes: [.font: font, .foregroundColor: color, .paragraphStyle: style])
+        TileLabel.embolden(text, FileSorter.matchRanges(in: name, query: query), font: font)
+        return text
+    }
+
     static func size(_ item: FileItem) -> String {
         item.isFolder ? "--" : ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file)
     }
