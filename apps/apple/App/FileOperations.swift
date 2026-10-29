@@ -14,6 +14,7 @@ struct Transfer: Equatable {
 
 struct OperationResult {
     var transfers: [Transfer] = []
+    var replaced: [Transfer] = []
     var errors: [Error] = []
     var stopped = false
 }
@@ -164,6 +165,9 @@ final class FileOperations {
             do {
                 try perform(source, destination)
                 result.transfers.append(Transfer(source: source, destination: destination))
+                if let replaced {
+                    result.replaced.append(Transfer(source: destination, destination: replaced))
+                }
                 placed.insert(destination.lastPathComponent.lowercased())
             } catch {
                 result.errors.append(error)

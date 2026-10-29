@@ -35,7 +35,7 @@ enum FileActions {
                     AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
                 }
             }
-            registerUndo(result.transfers, copy: copy)
+            registerUndo(result.transfers, replaced: result.replaced, copy: copy)
             completion?(result.transfers.map(\.destination))
         }
     }
@@ -199,13 +199,21 @@ enum FileActions {
         }
     }
 
-    private static func registerUndo(_ transfers: [Transfer], copy: Bool) {
+    private static func registerUndo(_ transfers: [Transfer], replaced: [Transfer] = [], copy: Bool) {
         guard !transfers.isEmpty else { return }
         registerUndo(copy ? "Copy" : "Move") {
             if copy {
-                trash(transfers.map(\.destination), undoable: false)
+                run("Moving \(itemCount(transfers.count)) to the Trash…") { operations in
+                    var result = operations.trash(transfers.map(\.destination))
+                    result.errors += operations.moveBack(replaced).errors
+                    return result
+                } completion: { _ in }
             } else {
-                run("Moving \(itemCount(transfers.count)) Back…") { $0.moveBack(transfers) } completion: { result in
+                run("Moving \(itemCount(transfers.count)) Back…") { operations in
+                    var result = operations.moveBack(transfers)
+                    result.errors += operations.moveBack(replaced).errors
+                    return result
+                } completion: { result in
                     for transfer in result.transfers {
                         AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
                     }

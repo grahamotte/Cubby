@@ -98,6 +98,38 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: target.appending(path: "README 2.txt"), encoding: .utf8), "sub")
     }
 
+    func testReplacedItemsCanBeRestored() throws {
+        let root = makeTemporaryDirectory()
+        let target = makeFolder(root, "target")
+        let existing = target.appending(path: "a.txt")
+
+        let copied = makeFile(root, "a.txt", contents: "copied")
+        makeFile(target, "a.txt", contents: "old copy target")
+        let copy = operations.copy([copied], to: target) { _ in .replace }
+        XCTAssertEqual(copy.replaced.map(\.source), [existing])
+        XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "copied")
+        XCTAssertTrue(operations.trash(copy.transfers.map(\.destination)).errors.isEmpty)
+        XCTAssertTrue(operations.moveBack(copy.replaced).errors.isEmpty)
+        XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "old copy target")
+
+        let moved = makeFile(makeFolder(root, "from"), "a.txt", contents: "moved")
+        let move = operations.move([moved], to: target) { _ in .replace }
+        XCTAssertEqual(move.replaced.map(\.source), [existing])
+        XCTAssertTrue(operations.moveBack(move.transfers).errors.isEmpty)
+        XCTAssertTrue(operations.moveBack(move.replaced).errors.isEmpty)
+        XCTAssertEqual(try String(contentsOf: moved, encoding: .utf8), "moved")
+        XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "old copy target")
+    }
+
+    func testOperationsWithoutReplaceRecordNoReplacedItems() {
+        let root = makeTemporaryDirectory()
+        let source = makeFile(root, "a.txt")
+        let target = makeFolder(root, "target")
+        makeFile(target, "a.txt")
+        XCTAssertTrue(operations.copy([source], to: target) { _ in .keepBoth }.replaced.isEmpty)
+        XCTAssertTrue(operations.move([source], to: makeFolder(root, "other")) { _ in .replace }.replaced.isEmpty)
+    }
+
     func testRenameValidatesAndAllowsCaseChange() throws {
         let root = makeTemporaryDirectory()
         let file = makeFile(root, "a.txt")
