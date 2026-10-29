@@ -24,6 +24,44 @@ final class FileSorterTests: XCTestCase {
         XCTAssertEqual(Array(names(FileSorter.sorted(items, by: .kind, ascending: true)).suffix(2)), ["a.txt", "z.txt"])
     }
 
+    func testRandomSortIsDeterministicForASeed() {
+        let items = (0..<50).map { item("file\($0)") }
+        let first = names(FileSorter.sorted(items, by: .random, ascending: true, seed: 20261028))
+        XCTAssertEqual(names(FileSorter.sorted(items.reversed(), by: .random, ascending: true, seed: 20261028)), first)
+        XCTAssertEqual(Set(first), Set(names(items)))
+        XCTAssertNotEqual(first, names(FileSorter.sorted(items, by: .name, ascending: true)))
+    }
+
+    func testRandomSortChangesWithTheSeed() {
+        let items = (0..<50).map { item("file\($0)") }
+        XCTAssertNotEqual(names(FileSorter.sorted(items, by: .random, ascending: true, seed: 20261028)), names(FileSorter.sorted(items, by: .random, ascending: true, seed: 20261029)))
+    }
+
+    func testRandomSortKeepsOtherItemsInPlaceWhenItemsChange() {
+        let items = (0..<50).map { item("file\($0)") }
+        let before = names(FileSorter.sorted(items, by: .random, ascending: true, seed: 7))
+        let added = names(FileSorter.sorted(items + [item("new")], by: .random, ascending: true, seed: 7))
+        XCTAssertEqual(added.filter { $0 != "new" }, before)
+        let removed = names(FileSorter.sorted(items.filter { $0.name != "file3" }, by: .random, ascending: true, seed: 7))
+        XCTAssertEqual(removed, before.filter { $0 != "file3" })
+    }
+
+    func testRandomSortIgnoresDirection() {
+        let items = (0..<20).map { item("file\($0)") }
+        XCTAssertEqual(names(FileSorter.sorted(items, by: .random, ascending: false, seed: 3)), names(FileSorter.sorted(items, by: .random, ascending: true, seed: 3)))
+    }
+
+    func testDaySeedUsesTheLocalCalendarDay() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let morning = ISO8601DateFormatter().date(from: "2026-10-28T15:00:00Z")!
+        let night = ISO8601DateFormatter().date(from: "2026-10-29T06:59:00Z")!
+        let nextDay = ISO8601DateFormatter().date(from: "2026-10-29T07:01:00Z")!
+        XCTAssertEqual(FileSorter.daySeed(morning, calendar: calendar), 20261028)
+        XCTAssertEqual(FileSorter.daySeed(night, calendar: calendar), 20261028)
+        XCTAssertEqual(FileSorter.daySeed(nextDay, calendar: calendar), 20261029)
+    }
+
     func testMatchRangesFindEveryRunOfTwoOrMoreCharacters() {
         XCTAssertEqual(FileSorter.matchRanges(in: "Report report.txt", query: "rep"), [NSRange(location: 0, length: 3), NSRange(location: 7, length: 3)])
         XCTAssertEqual(FileSorter.matchRanges(in: "notes.md", query: " not "), [NSRange(location: 0, length: 3)])

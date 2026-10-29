@@ -3,8 +3,13 @@ import Foundation
 enum FileSorter {
     static let nameOptions: String.CompareOptions = [.caseInsensitive, .numeric, .widthInsensitive, .forcedOrdering]
 
-    static func sorted(_ items: [FileItem], by key: SortKey, ascending: Bool) -> [FileItem] {
+    static func sorted(_ items: [FileItem], by key: SortKey, ascending: Bool, seed: UInt64 = 0) -> [FileItem] {
         switch key {
+        case .random:
+            let ranks = items.map { randomRank($0.name, seed: seed) }
+            return sortIndexed(items, ascending: true) { lhs, rhs in
+                ranks[lhs] == ranks[rhs] ? .orderedSame : (ranks[lhs] < ranks[rhs] ? .orderedAscending : .orderedDescending)
+            }
         case .name:
             return sortIndexed(items, ascending: ascending, byName: true) { _, _ in .orderedSame }
         case .kind:
@@ -21,6 +26,21 @@ enum FileSorter {
         case .added:
             return sortValues(items, ascending: ascending) { $0.added }
         }
+    }
+
+    static func daySeed(_ date: Date = Date(), calendar: Calendar = .current) -> UInt64 {
+        let day = calendar.dateComponents([.year, .month, .day], from: date)
+        return UInt64((day.year ?? 0) * 10000 + (day.month ?? 0) * 100 + (day.day ?? 0))
+    }
+
+    static func randomRank(_ name: String, seed: UInt64) -> UInt64 {
+        var hash: UInt64 = 0xcbf29ce484222325 ^ seed
+        for byte in name.utf8 {
+            hash = (hash ^ UInt64(byte)) &* 0x100000001b3
+        }
+        hash = (hash ^ (hash >> 30)) &* 0xbf58476d1ce4e5b9
+        hash = (hash ^ (hash >> 27)) &* 0x94d049bb133111eb
+        return hash ^ (hash >> 31)
     }
 
     static func filtered(_ items: [FileItem], visibility: Visibility, query: String) -> [FileItem] {

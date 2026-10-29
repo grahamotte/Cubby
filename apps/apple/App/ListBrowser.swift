@@ -269,7 +269,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             outlineView.sortDescriptors = [descriptor]
         }
         for column in outlineView.tableColumns {
-            let active = column.sortDescriptorPrototype?.key == view.sort.rawValue
+            let active = view.sort.hasDirection && column.sortDescriptorPrototype?.key == view.sort.rawValue
             outlineView.setIndicatorImage(active ? NSImage(named: view.ascending ? "NSAscendingSortIndicator" : "NSDescendingSortIndicator") : nil, in: column)
         }
         outlineView.highlightedTableColumn = outlineView.tableColumns.first { $0.sortDescriptorPrototype?.key == view.sort.rawValue }

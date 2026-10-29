@@ -17,6 +17,7 @@ final class DirectoryModel {
     var ascending: Bool
     var visibility: Visibility
     var query = ""
+    let seed = FileSorter.daySeed()
     var onChange: ((Change) -> Void)?
 
     private var generation = 0
@@ -55,11 +56,11 @@ final class DirectoryModel {
         generation += 1
         let token = generation
         let all = allItems
-        let sort = sort, ascending = ascending, visibility = visibility, query = query
+        let sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
         let expandedItems = Array(expanded.values)
         Self.queue.async {
-            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending)
-            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending) }) }
+            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed)
+            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed) }) }
             DispatchQueue.main.async {
                 guard token == self.generation else { return }
                 for (item, sorted) in children {
@@ -88,11 +89,11 @@ final class DirectoryModel {
     }
 
     private func loadChildren(of item: FileItem) {
-        let sort = sort, ascending = ascending, visibility = visibility
+        let sort = sort, ascending = ascending, visibility = visibility, seed = seed
         let path = item.path
         Self.queue.async {
             let read = (try? DirectoryReader.read(path)) ?? []
-            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending)
+            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed)
             DispatchQueue.main.async {
                 guard !self.stopped, self.expanded[path] === item else { return }
                 item.children = DirectoryListing.reconcile(old: item.children ?? [], new: read, visible: visible).visible
@@ -121,7 +122,7 @@ final class DirectoryModel {
     private func load(change: Change) {
         generation += 1
         let token = generation
-        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query
+        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
         let started = Date()
         Self.queue.async { [weak self] in
             let result: Result<[FileItem], DirectoryReader.ReadError>
@@ -133,7 +134,7 @@ final class DirectoryModel {
             } catch {
                 result = .failure(DirectoryReader.ReadError(path: path, code: EIO))
             }
-            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending) } ?? []
+            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed) } ?? []
             DispatchQueue.main.async {
                 guard let self, token == self.generation, !self.stopped else { return }
                 self.lastLoadDuration = Date().timeIntervalSince(started)

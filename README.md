@@ -24,7 +24,7 @@ The top bar shows the current folder as a breadcrumb; click any part of it to ju
 
 - **Views**: list (⌘1), icons (⌘2), and columns (⌘3). The list view has sortable, resizable columns and folders that expand in place. The icon view shows Quick Look thumbnails, and Space opens Quick Look.
 - **Layouts**: one pane, side by side, stacked, three panes, or four panes (⌥⌘1 to ⌥⌘5). Each pane browses on its own, so you can drag files between them.
-- **Per-folder views**: each folder remembers its view, sort, and icon size. The memory follows a folder when it is renamed or moved.
+- **Per-folder views**: each folder remembers its view, sort, and icon size. The memory follows a folder when it is renamed or moved. Random sort (⌃⌘7) shuffles a folder in an order that stays put all day and changes the next day.
 
 Copy, cut, paste, drag and drop, rename, duplicate, compress, new folder, and Move to Trash all work as in Finder, and ⌘Z undoes them. Hold ⌥ while dropping to copy instead of move. The Go menu has shortcuts to common folders and **Go to Folder…** (⇧⌘G).
 
