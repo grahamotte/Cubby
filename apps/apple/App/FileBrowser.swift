@@ -94,6 +94,17 @@ enum FileFormat {
 final class RenameField: NSTextField {
     var onCommit: ((String) -> Void)?
     var onCancel: (() -> Void)?
+    private var topEdge: CGFloat = 0
+
+    var wrapsLines = false {
+        didSet {
+            cell?.wraps = wrapsLines
+            cell?.isScrollable = !wrapsLines
+            usesSingleLineMode = !wrapsLines
+            lineBreakMode = wrapsLines ? .byWordWrapping : .byClipping
+            focusRingType = wrapsLines ? .none : .default
+        }
+    }
 
     static func make() -> RenameField {
         let field = RenameField()
@@ -112,10 +123,27 @@ final class RenameField: NSTextField {
     func begin(in view: NSView, frame: NSRect, text: String) {
         stringValue = text
         self.frame = frame
+        topEdge = view.isFlipped ? frame.minY : frame.maxY
         view.addSubview(self)
+        fitHeight()
         window?.makeFirstResponder(self)
         let (base, ext) = FileNaming.split(text)
         currentEditor()?.selectedRange = NSRange(location: 0, length: ext.isEmpty ? (text as NSString).length : (base as NSString).length)
+    }
+
+    override func textDidChange(_ notification: Notification) {
+        super.textDidChange(notification)
+        fitHeight()
+    }
+
+    private func fitHeight() {
+        guard wrapsLines, let measuring = cell?.copy() as? NSCell else { return }
+        measuring.stringValue = stringValue
+        let height = measuring.cellSize(forBounds: NSRect(x: 0, y: 0, width: frame.width, height: .greatestFiniteMagnitude)).height.rounded(.up)
+        guard height != frame.height else { return }
+        let flipped = superview?.isFlipped ?? true
+        setFrameSize(NSSize(width: frame.width, height: height))
+        setFrameOrigin(NSPoint(x: frame.minX, y: flipped ? topEdge : topEdge - height))
     }
 
     override func textDidEndEditing(_ notification: Notification) {
