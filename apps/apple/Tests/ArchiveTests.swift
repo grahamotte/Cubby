@@ -25,6 +25,21 @@ final class ArchiveTests: XCTestCase {
         XCTAssertEqual(archive?.directory?.path, "/Users/me/Stuff")
     }
 
+    func testItemsFromDifferentFoldersUseCommonFolder() {
+        let urls = [folder.appending(path: "a.txt"), folder.appending(path: "sub/deeper/b.txt"), folder.appending(path: "sub/c", directoryHint: .isDirectory)]
+        let archive = Archive.plan(for: urls) { _ in false }
+        XCTAssertEqual(archive?.directory?.path, "/Users/me/Stuff")
+        XCTAssertEqual(archive?.destination.path, "/Users/me/Stuff/Archive.zip")
+        XCTAssertEqual(archive?.arguments, ["-r", "-y", "-q", "/Users/me/Stuff/Archive.zip", "--", "a.txt", "sub/deeper/b.txt", "sub/c"])
+    }
+
+    func testSiblingSubfoldersUseTheirParent() {
+        let urls = [folder.appending(path: "x/a.txt"), folder.appending(path: "y/b.txt")]
+        let archive = Archive.plan(for: urls) { _ in false }
+        XCTAssertEqual(archive?.directory?.path, "/Users/me/Stuff")
+        XCTAssertEqual(Array(archive?.arguments.suffix(2) ?? []), ["x/a.txt", "y/b.txt"])
+    }
+
     func testDestinationAvoidsExistingArchive() {
         let urls = [folder.appending(path: "a.txt"), folder.appending(path: "b.txt")]
         let archive = Archive.plan(for: urls) { $0 == "/Users/me/Stuff/Archive.zip" }
