@@ -36,7 +36,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.5.1",
+    "build": "0.6.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -67,7 +67,7 @@
       },
       "android": {}
     },
-    "version": "0.5.1",
-    "whatsNew": "Dragging multiple selected items works again."
+    "version": "0.6.0",
+    "whatsNew": "A new moon app icon. Safer file operations: Replace never loses the item it replaces, Undo restores replaced items, items moved together no longer replace each other, compressing can no longer delete files and handles items from different folders, and every failed item is reported. Column view keeps your selection when a folder changes, file actions are disabled while renaming or filtering, renaming to a dot name asks first, and image thumbnails no longer get stuck on the placeholder icon."
   }
 }
