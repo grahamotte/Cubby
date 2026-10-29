@@ -24,6 +24,24 @@ final class FileSorterTests: XCTestCase {
         XCTAssertEqual(Array(names(FileSorter.sorted(items, by: .kind, ascending: true)).suffix(2)), ["a.txt", "z.txt"])
     }
 
+    func testMatchRangesFindEveryRunOfTwoOrMoreCharacters() {
+        XCTAssertEqual(FileSorter.matchRanges(in: "Report report.txt", query: "rep"), [NSRange(location: 0, length: 3), NSRange(location: 7, length: 3)])
+        XCTAssertEqual(FileSorter.matchRanges(in: "notes.md", query: " not "), [NSRange(location: 0, length: 3)])
+        XCTAssertEqual(FileSorter.matchRanges(in: "notes.md", query: "n"), [])
+        XCTAssertEqual(FileSorter.matchRanges(in: "notes.md", query: ""), [])
+        XCTAssertEqual(FileSorter.matchRanges(in: "notes.md", query: "xyz"), [])
+    }
+
+    func testMatchRangesMapOntoDisplayedNamesWithAccentsAndCase() {
+        XCTAssertEqual(FileSorter.matchRanges(in: "Résumé.pdf", query: "RESU"), [NSRange(location: 0, length: 4)])
+        let decomposed = "Re\u{301}sume\u{301}.pdf"
+        let ranges = FileSorter.matchRanges(in: decomposed, query: "ésu")
+        XCTAssertEqual(ranges, [NSRange(location: 1, length: 4)])
+        XCTAssertEqual((decomposed as NSString).substring(with: ranges[0]), "e\u{301}su")
+        let emoji = "🎉party🎉.txt"
+        XCTAssertEqual((emoji as NSString).substring(with: FileSorter.matchRanges(in: emoji, query: "PARTY")[0]), "party")
+    }
+
     func testFiltersHiddenAndQuery() {
         let items = [item(".git", directory: true, hidden: true), item("Résumé.pdf"), item("notes.md")]
         let hidden = Visibility(showHidden: true, showDSStore: false)

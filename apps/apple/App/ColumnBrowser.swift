@@ -112,7 +112,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         let column = columns[activeIndex]
         guard let row = column.table.selectedRowIndexes.first, let cell = column.table.view(atColumn: 0, row: row, makeIfNecessary: true) as? NSTableCellView, let label = cell.textField else { return }
         let item = items(in: column)[row]
-        renameField.font = label.font
+        renameField.font = ColumnCell.font
         renameField.onCommit = { [weak self] name in
             self?.host?.rename(item, to: name)
             self?.focus()
@@ -337,7 +337,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         let item = items[row]
         let id = NSUserInterfaceItemIdentifier("ColumnCell")
         let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? ColumnCell) ?? ColumnCell(identifier: id)
-        cell.textField?.stringValue = item.name
+        cell.textField?.attributedStringValue = FileFormat.name(item.name, query: column.model == nil ? host?.model.query ?? "" : "", font: ColumnCell.font, color: Theme.text)
         cell.imageView?.image = IconCache.shared.icon(for: item)
         cell.chevron.isHidden = !item.isFolder
         cell.alphaValue = item.isHidden ? 0.5 : 1
@@ -390,6 +390,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
 }
 
 final class ColumnCell: NSTableCellView {
+    static let font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
     let chevron = NSImageView(image: NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil) ?? NSImage())
 
     init(identifier: NSUserInterfaceItemIdentifier) {
@@ -398,6 +399,7 @@ final class ColumnCell: NSTableCellView {
         let image = NSImageView()
         let label = NSTextField(labelWithString: "")
         label.lineBreakMode = .byTruncatingMiddle
+        label.font = ColumnCell.font
         label.textColor = Theme.text
         chevron.contentTintColor = Theme.icon
         chevron.symbolConfiguration = .init(pointSize: 10, weight: .semibold)

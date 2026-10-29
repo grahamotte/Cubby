@@ -34,6 +34,28 @@ final class TileLabelTests: XCTestCase {
         XCTAssertEqual(last?.alignment, .center)
     }
 
+    func testTextBoldsMatchedRanges() {
+        let text = TileLabel.text("notes.txt", width: 100, font: font, color: .labelColor, bold: [NSRange(location: 0, length: 3)])
+        let bold = text.attribute(.font, at: 0, effectiveRange: nil) as? NSFont
+        let regular = text.attribute(.font, at: 3, effectiveRange: nil) as? NSFont
+        XCTAssertTrue(bold?.fontDescriptor.symbolicTraits.contains(.bold) == true)
+        XCTAssertEqual(bold?.pointSize, font.pointSize)
+        XCTAssertEqual(regular, font)
+    }
+
+    func testTextBoldsAcrossTheLineBreak() throws {
+        let name = String(repeating: "abcdefghij", count: 12)
+        let lines = try XCTUnwrap(TileLabel.lines(name, width: 100, font: font))
+        let split = (lines.first as NSString).length
+        let text = TileLabel.text(name, width: 100, font: font, color: .labelColor, bold: [NSRange(location: split - 2, length: 4)])
+        XCTAssertEqual((text.string as NSString).substring(with: NSRange(location: split, length: 1)), "\n")
+        for index in [split - 2, split - 1, split + 1, split + 2] {
+            XCTAssertTrue((text.attribute(.font, at: index, effectiveRange: nil) as? NSFont)?.fontDescriptor.symbolicTraits.contains(.bold) == true, "\(index)")
+        }
+        XCTAssertEqual(text.attribute(.font, at: split + 3, effectiveRange: nil) as? NSFont, font)
+        XCTAssertEqual(text.attribute(.font, at: split - 3, effectiveRange: nil) as? NSFont, font)
+    }
+
     func testTextKeepsShortNamesInOneParagraph() {
         let text = TileLabel.text("notes.txt", width: 100, font: font, color: .labelColor)
         XCTAssertEqual(text.string, "notes.txt")

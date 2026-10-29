@@ -13,6 +13,7 @@ final class FileTileItem: NSCollectionViewItem {
     private var iconSize: CGFloat = 64
     private var labelWidth: CGFloat = 0
     private var labelSelected = false
+    private var query = ""
     var isRenaming = false {
         didSet { updateSelection() }
     }
@@ -59,7 +60,7 @@ final class FileTileItem: NSCollectionViewItem {
         NSRect(x: 4, y: 0, width: max(view.bounds.width - 8, 0), height: FileTileItem.labelHeight)
     }
 
-    func configure(_ item: FileItem, iconSize: CGFloat, cut: Bool) {
+    func configure(_ item: FileItem, iconSize: CGFloat, cut: Bool, query: String) {
         let previous = self.item
         if let previous, previous !== item {
             ThumbnailCache.shared.cancel(for: previous, size: self.iconSize)
@@ -79,9 +80,10 @@ final class FileTileItem: NSCollectionViewItem {
                 self.thumbnail.show(thumbnail)
             }
         }
-        if previous?.name != item.name {
+        if previous?.name != item.name || self.query != query {
             labelWidth = 0
         }
+        self.query = query
         view.needsLayout = true
         updateSelection()
     }
@@ -113,7 +115,7 @@ final class FileTileItem: NSCollectionViewItem {
     private func updateLabel() {
         guard let item, labelWidth > 0 else { return }
         let color = labelSelected ? Theme.accentText : Theme.text
-        label.attributedStringValue = TileLabel.text(item.name, width: labelWidth - 10, font: FileTileItem.labelFont, color: color)
+        label.attributedStringValue = TileLabel.text(item.name, width: labelWidth - 10, font: FileTileItem.labelFont, color: color, bold: FileSorter.matchRanges(in: item.name, query: query))
         layoutLabel()
     }
 
@@ -378,7 +380,7 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func configure(_ tile: FileTileItem, _ item: FileItem) {
         let cut = AppState.shared.cutURLs.contains { $0.path == item.path }
-        tile.configure(item, iconSize: iconSize, cut: cut)
+        tile.configure(item, iconSize: iconSize, cut: cut, query: host?.model.query ?? "")
     }
 
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {

@@ -31,6 +31,20 @@ enum FileSorter {
         }
     }
 
+    static func matchRanges(in name: String, query: String) -> [NSRange] {
+        let needle = query.trimmingCharacters(in: .whitespaces)
+        guard needle.count > 1 else { return [] }
+        var ranges: [NSRange] = []
+        var start = name.startIndex
+        while start < name.endIndex, let found = name.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], range: start..<name.endIndex) {
+            if name.distance(from: found.lowerBound, to: found.upperBound) > 1 {
+                ranges.append(NSRange(found, in: name))
+            }
+            start = found.upperBound
+        }
+        return ranges
+    }
+
     private static func sortValues(_ items: [FileItem], ascending: Bool, value: (FileItem) -> Double) -> [FileItem] {
         let values = items.map(value)
         return sortIndexed(items, ascending: ascending) { lhs, rhs in
