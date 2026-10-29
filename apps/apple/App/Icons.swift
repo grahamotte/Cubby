@@ -63,7 +63,7 @@ final class ThumbnailCache {
     }
 
     static func requestSize(_ size: CGFloat) -> CGFloat {
-        (size / 64).rounded(.up) * 64
+        size <= 64 ? (size / 16).rounded(.up) * 16 : (size / 64).rounded(.up) * 64
     }
 
     func cached(for item: FileItem, size: CGFloat) -> Thumbnail? {
