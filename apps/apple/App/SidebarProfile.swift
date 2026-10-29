@@ -59,6 +59,10 @@ struct SidebarProfile: Codable {
         try container.encode(tree.nodes, forKey: .sidebar)
     }
 
+    var startPath: String? {
+        tree.folders().first?.url?.path
+    }
+
     static func personal(_ sidebar: [SidebarNode]) -> SidebarProfile {
         SidebarProfile(name: "Personal", icon: "person", sidebar: sidebar)
     }

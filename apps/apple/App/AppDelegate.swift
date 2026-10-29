@@ -72,11 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     private func restore(_ session: SessionState) {
-        let home = NSHomeDirectory()
-        let exists = { (path: String) in FileManager.default.fileExists(atPath: path) }
-        for window in session.windows where !window.tabs.isEmpty {
-            let tab = window.tabs[min(max(window.selectedTab, 0), window.tabs.count - 1)]
-            let controller = BrowserWindowController(tab: tab.normalized(home: home, exists: exists), sidebarWidth: window.sidebarWidth)
+        for window in session.windows where window.tabs.contains(where: { $0 != nil }) {
+            let controller = BrowserWindowController(tabs: ProfileTabs(tabs: window.tabs, profile: AppState.shared.profile), sidebarWidth: window.sidebarWidth)
             controllers.append(controller)
             if let frame = window.frame {
                 controller.window?.setFrame(from: frame)
@@ -89,9 +86,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     @discardableResult
     func openWindow(path: String, layout: PaneLayout = .single) -> BrowserWindowController {
-        let tab = SessionState.Tab(layout: layout, paths: [path], activePane: 0).normalized(home: NSHomeDirectory()) { FileManager.default.fileExists(atPath: $0) }
+        let tab = SessionState.Tab(layout: layout, paths: [path], activePane: 0)
         let reference = NSApp.keyWindow?.windowController as? BrowserWindowController
-        let controller = BrowserWindowController(tab: tab, sidebarWidth: reference?.sidebarWidth)
+        let controller = BrowserWindowController(tabs: ProfileTabs(tab: tab, profile: AppState.shared.profile), sidebarWidth: reference?.sidebarWidth)
         controllers.append(controller)
         if let referenceWindow = reference?.window, let window = controller.window {
             window.setFrame(referenceWindow.frame, display: false)
@@ -122,7 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let ordered = NSApp.orderedWindows.compactMap { $0.windowController as? BrowserWindowController }
         let all = ordered + controllers.filter { controller in !ordered.contains { $0 === controller } }
         let windows = all.compactMap { controller in
-            controller.window.map { SessionState.Window(frame: $0.frameDescriptor, sidebarWidth: controller.sidebarWidth, tabs: [controller.tabState], selectedTab: 0) }
+            controller.window.map { SessionState.Window(frame: $0.frameDescriptor, sidebarWidth: controller.sidebarWidth, tabs: controller.profileTabs.saving(controller.tabState)) }
         }
         let state = SessionState(windows: windows, listColumns: AppState.shared.listColumns.isEmpty ? nil : AppState.shared.listColumns)
         try? state.save(to: AppState.shared.paths.sessionFile)

@@ -25,6 +25,12 @@ final class SidebarProfileTests: XCTestCase {
         XCTAssertTrue(decoded.tree.nodes[0].parent === decoded.tree.root)
     }
 
+    func testStartPathIsFirstFolder() {
+        let profile = SidebarProfile(name: "Work", icon: "briefcase", sidebar: [SidebarNode.group("Empty"), SidebarNode.group("Code", [SidebarNode.folder("/tmp/code"), SidebarNode.folder("/tmp/other")])])
+        XCTAssertEqual(profile.startPath, "/tmp/code")
+        XCTAssertNil(SidebarProfile(name: "Empty", icon: "star", sidebar: [SidebarNode.group("Empty")]).startPath)
+    }
+
     func testMakePicksUnusedNameAndIcon() {
         let first = SidebarProfile.make(after: [SidebarProfile.personal([])])
         XCTAssertEqual(first.name, "New Profile")
