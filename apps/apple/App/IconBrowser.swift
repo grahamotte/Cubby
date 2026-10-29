@@ -6,13 +6,16 @@ final class FileTileItem: NSCollectionViewItem {
     static let labelFont = NSFont.systemFont(ofSize: 12)
 
     private let thumbnail = ThumbnailView()
-    private let label = NSTextField(wrappingLabelWithString: "")
+    private let label = PassthroughLabel(wrappingLabelWithString: "")
     private let selectionBackground = FillView()
     private let labelBackground = FillView()
     private var item: FileItem?
     private var iconSize: CGFloat = 64
     private var labelWidth: CGFloat = 0
     private var labelSelected = false
+    var isRenaming = false {
+        didSet { updateSelection() }
+    }
 
     override func loadView() {
         view = NSView()
@@ -20,6 +23,7 @@ final class FileTileItem: NSCollectionViewItem {
         selectionBackground.cornerRadius = 10
         labelBackground.cornerRadius = 4
         label.maximumNumberOfLines = 2
+        label.isSelectable = false
         label.cell?.truncatesLastVisibleLine = true
         view.addSubview(selectionBackground)
         view.addSubview(thumbnail)
@@ -88,6 +92,7 @@ final class FileTileItem: NSCollectionViewItem {
             ThumbnailCache.shared.cancel(for: item, size: iconSize)
         }
         item = nil
+        isRenaming = false
         thumbnail.show(nil)
     }
 
@@ -96,7 +101,8 @@ final class FileTileItem: NSCollectionViewItem {
         let focused = (collectionView as? FileCollectionView)?.isFocused == true
         selectionBackground.isHidden = !selected
         labelBackground.color = focused ? Theme.accent : Theme.inactiveSelection
-        labelBackground.isHidden = !selected
+        labelBackground.isHidden = !selected || isRenaming
+        label.isHidden = isRenaming
         let emphasized = selected && focused
         if emphasized != labelSelected {
             labelSelected = emphasized
@@ -295,17 +301,21 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
         collectionView.layoutSubtreeIfNeeded()
         guard let tile = collectionView.item(at: IndexPath(item: index, section: 0)) as? FileTileItem else { return }
         let item = items[index]
-        var frame = collectionView.convert(tile.labelFrame, from: tile.view)
-        frame.size.height = 22
-        frame.origin.y = collectionView.convert(tile.labelFrame, from: tile.view).maxY - 22
-        renameField.font = .systemFont(ofSize: 12)
+        let frame = collectionView.convert(tile.labelFrame, from: tile.view)
+        renameField.font = FileTileItem.labelFont
         renameField.alignment = .center
-        renameField.onCommit = { [weak self] name in
-            self?.host?.rename(item, to: name)
+        renameField.wrapsLines = true
+        tile.isRenaming = true
+        let finish: () -> Void = { [weak self, weak tile] in
+            tile?.isRenaming = false
             self?.focus()
         }
-        renameField.onCancel = { [weak self] in self?.focus() }
-        renameField.begin(in: collectionView, frame: frame, text: item.name)
+        renameField.onCommit = { [weak self] name in
+            self?.host?.rename(item, to: name)
+            finish()
+        }
+        renameField.onCancel = finish
+        renameField.begin(in: collectionView, frame: NSRect(x: frame.minX, y: frame.minY, width: frame.width, height: 0), text: item.name)
     }
 
     func selectionChanged() {
