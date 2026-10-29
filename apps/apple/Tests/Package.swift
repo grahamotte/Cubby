@@ -58,6 +58,7 @@ let package = Package(
                 "SidebarProfile.swift",
                 "SidebarTree.swift",
                 "ThemeLibrary.swift",
+                "ThumbnailCache.swift",
                 "TileLabel.swift",
                 "Visibility.swift",
             ],
