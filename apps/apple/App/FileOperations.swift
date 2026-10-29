@@ -128,6 +128,7 @@ final class FileOperations {
             }
             let sameDirectory = resolved(source.deletingLastPathComponent()) == resolvedDirectory
             var destination = directory.appending(path: source.lastPathComponent)
+            var replaced: URL?
             if sameDirectory && !copiesInPlace {
                 continue
             } else if sameDirectory {
@@ -148,7 +149,9 @@ final class FileOperations {
                         continue
                     }
                     do {
-                        try fileManager.trashItem(at: destination, resultingItemURL: nil)
+                        var trashed: NSURL?
+                        try fileManager.trashItem(at: destination, resultingItemURL: &trashed)
+                        replaced = trashed as URL?
                     } catch {
                         result.errors.append(error)
                         continue
@@ -160,9 +163,23 @@ final class FileOperations {
                 result.transfers.append(Transfer(source: source, destination: destination))
             } catch {
                 result.errors.append(error)
+                if let replaced {
+                    putBack(replaced, at: destination, into: &result)
+                }
             }
         }
         return result
+    }
+
+    private func putBack(_ replaced: URL, at destination: URL, into result: inout OperationResult) {
+        do {
+            if fileManager.fileExists(atPath: destination.path) {
+                try fileManager.trashItem(at: destination, resultingItemURL: nil)
+            }
+            try fileManager.moveItem(at: replaced, to: destination)
+        } catch {
+            result.errors.append(error)
+        }
     }
 
     private func resolved(_ url: URL) -> String {
