@@ -1,6 +1,14 @@
 import AppKit
 
 final class BrowserWindow: NSWindow {
+    override func fieldEditor(_ createFlag: Bool, for object: Any?) -> NSText? {
+        let editor = super.fieldEditor(createFlag, for: object)
+        if let editor = editor as? NSTextView {
+            ThemedText.apply(to: editor)
+        }
+        return editor
+    }
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if !(firstResponder is NSTextView), let combo = KeyCombo(event: event), let item = MainMenu.alternates[combo], let action = item.action,
            let target = NSApp.target(forAction: action, to: item.target, from: item) as AnyObject?,

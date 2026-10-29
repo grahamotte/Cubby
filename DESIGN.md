@@ -13,6 +13,8 @@ colors:
   resting-selection: "rgba(0, 0, 0, 0.07)"
   resting-selection-dark: "rgba(255, 255, 255, 0.09)"
   accent: "#007AFF"
+  knob: "#FFFFFF"
+  knob-dark: "#F2F2F2"
 typography:
   body:
     fontFamily: "SF Pro Text, -apple-system, system-ui"
@@ -121,6 +123,7 @@ The default "Workbench" theme is a barely warm paper neutral with the macOS acce
 - **Icon** (black 50% / white 55%): toolbar symbols, sidebar folder symbols, disclosure chevrons.
 - **Sidebar Text** and **Sidebar Secondary Text**: sidebar folder names, and group headers with their chevrons.
 - **Accent Text** (white): the name on a focused selected tile's accent pill. **Warning** (system orange): a sidebar folder that no longer exists.
+- **Knob** (white light / near-white dark): the knob of switches and sliders, so it stays visible on both the accent and the resting track. Theme files without `knob` use Workbench's.
 
 ### Named Rules
 **The One Accent Rule.** The accent appears only as selection, focus, and the rare link. Folder icons, group headers, and toolbar icons are never tinted with it.
@@ -192,7 +195,7 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 - **Internal Padding:** rows of title plus description on the left, a native control on the right, 12 pt vertical and 16 pt horizontal, hairline dividers inset 16 pt.
 
 ### Settings Page
-Settings replaces the pane area in the window (never a separate window). Its header shares the top bar's height and position with a close button at the right. Controls are native: switches, borderless pop-ups, and a small slider. Profiles are accordion rows in one card: a collapsed row shows a chevron, the profile's icon and name, and a small light/dark swatch pair with the theme name; the one expanded row (the active profile when Settings opens) shows the editable icon, name, and delete button above that profile's theme grid.
+Settings replaces the pane area in the window (never a separate window). Its header shares the top bar's height and position with a close button at the right. Controls follow the theme: switches and the icon size slider are small custom-drawn controls (accent track or fill when on, a resting-selection track when off, and a Knob-colored knob) that keep native clicks, keyboard toggling, and accessibility; pop-ups are borderless in secondary text. The filter field is a pill in resting selection with a hairline border that turns accent while editing, and text selection in fields uses the 20% accent wash with a text-colored caret. Menus, scrollers, and spinners stay system-drawn. Profiles are accordion rows in one card: a collapsed row shows a chevron, the profile's icon and name, and a small light/dark swatch pair with the theme name; the one expanded row (the active profile when Settings opens) shows the editable icon, name, and delete button above that profile's theme grid.
 
 ## Do's and Don'ts
 

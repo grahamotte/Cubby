@@ -152,18 +152,17 @@ final class RenameField: NSTextField {
             cell?.isScrollable = !wrapsLines
             usesSingleLineMode = !wrapsLines
             lineBreakMode = wrapsLines ? .byWordWrapping : .byClipping
-            focusRingType = wrapsLines ? .none : .default
         }
     }
 
     static func make() -> RenameField {
         let field = RenameField()
-        field.isBordered = true
+        field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = true
         field.backgroundColor = Theme.card
         field.textColor = Theme.text
-        field.focusRingType = .default
+        field.focusRingType = .none
         field.lineBreakMode = .byClipping
         field.cell?.isScrollable = true
         field.cell?.wraps = false
@@ -173,12 +172,26 @@ final class RenameField: NSTextField {
     func begin(in view: NSView, frame: NSRect, text: String) {
         stringValue = text
         self.frame = frame
+        updateBorder()
         topEdge = view.isFlipped ? frame.minY : frame.maxY
         view.addSubview(self)
         fitHeight()
         window?.makeFirstResponder(self)
         let (base, ext) = FileNaming.split(text)
         currentEditor()?.selectedRange = NSRange(location: 0, length: ext.isEmpty ? (text as NSString).length : (base as NSString).length)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateBorder()
+    }
+
+    private func updateBorder() {
+        wantsLayer = true
+        layer?.borderWidth = 1
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.borderColor = Theme.accent.cgColor
+        }
     }
 
     override func textDidChange(_ notification: Notification) {

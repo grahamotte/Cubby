@@ -36,7 +36,7 @@ enum PlainButton {
 }
 
 final class TopBar: NSView {
-    let searchField = NSSearchField()
+    let searchField = ThemedSearchField()
     var onNavigate: ((String) -> Void)?
     private let crumbs = NSStackView()
     private let activitySpinner = NSProgressIndicator()
@@ -89,9 +89,9 @@ final class TopBar: NSView {
         activityLabel.isHidden = true
         activityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        searchField.placeholderString = "Filter"
         searchField.controlSize = .small
         searchField.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        searchField.placeholderString = "Filter"
         searchField.sendsSearchStringImmediately = true
         searchField.focusRingType = .none
         searchField.isHidden = true

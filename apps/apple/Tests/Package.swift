@@ -30,6 +30,7 @@ let package = Package(
                 "SettingsController.swift",
                 "SidebarController.swift",
                 "Theme.swift",
+                "ThemedControls.swift",
                 "TopBar.swift",
             ],
             sources: [
