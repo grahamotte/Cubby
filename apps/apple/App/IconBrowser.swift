@@ -288,13 +288,43 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
         collectionView.selectionIndexPaths = Set(indexes.map { IndexPath(item: $0, section: 0) })
         applyingSelection = false
         if scroll, let first = indexes.first {
-            collectionView.scrollToItems(at: [IndexPath(item: first, section: 0)], scrollPosition: .centeredVertically)
+            collectionView.layoutSubtreeIfNeeded()
+            let frame = collectionView.layoutAttributesForItem(at: IndexPath(item: first, section: 0))?.frame
+            if frame.map({ !visibleArea.contains($0) }) ?? true {
+                collectionView.scrollToItems(at: [IndexPath(item: first, section: 0)], scrollPosition: .centeredVertically)
+            }
         }
         selectionChanged()
     }
 
     func focus() {
         view.window?.makeFirstResponder(collectionView)
+    }
+
+    private var visibleArea: NSRect {
+        var rect = collectionView.visibleRect
+        let inset = ScrollAnchoring.topInset(collectionView)
+        rect.origin.y += inset
+        rect.size.height -= inset
+        return rect
+    }
+
+    func scrollAnchor() -> ScrollAnchor? {
+        let visible = visibleArea
+        let top = collectionView.indexPathsForVisibleItems().map(\.item).sorted().first { index in
+            (collectionView.layoutAttributesForItem(at: IndexPath(item: index, section: 0))?.frame.maxY ?? 0) > visible.minY
+        }
+        guard let top, let frame = collectionView.layoutAttributesForItem(at: IndexPath(item: top, section: 0))?.frame else { return nil }
+        return ScrollAnchoring.anchor(top: top, count: items.count, offset: visible.minY - frame.minY) { item(at: $0)?.path }
+    }
+
+    func restoreScroll(_ anchor: ScrollAnchor) {
+        let names = Dictionary(items.enumerated().map { ($1.path, $0) }, uniquingKeysWith: { first, _ in first })
+        guard let target = anchor.resolve({ names[$0] }) else { return }
+        view.superview?.layoutSubtreeIfNeeded()
+        collectionView.layoutSubtreeIfNeeded()
+        guard let frame = collectionView.layoutAttributesForItem(at: IndexPath(item: target.index, section: 0))?.frame else { return }
+        collectionView.scroll(NSPoint(x: 0, y: frame.minY + CGFloat(target.offset) - ScrollAnchoring.topInset(collectionView)))
     }
 
     func beginRename(path: String) {

@@ -22,6 +22,9 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     private var loadingIndicator: DispatchWorkItem?
     private var pendingSelection: Set<String> = []
     private var pendingRename: String?
+    private var scrollMemory = ScrollMemory()
+    private var restoresScroll = false
+    private var scrolledWhileLoading = false
     private var observers: [NSObjectProtocol] = []
     var query = "" {
         didSet {
@@ -90,6 +93,12 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         startModel()
         let center = NotificationCenter.default
         observers = [
+            center.addObserver(forName: NSScrollView.willStartLiveScrollNotification, object: nil, queue: .main) { [weak self] note in
+                MainActor.assumeIsolated {
+                    guard let self, self.restoresScroll, let scroll = note.object as? NSView, scroll.isDescendant(of: self.content) else { return }
+                    self.scrolledWhileLoading = true
+                }
+            },
             center.addObserver(forName: .showHiddenChanged, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
@@ -123,6 +132,11 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         if recordHistory {
             history.visit(standardized)
         }
+        if model.isLoaded {
+            scrollMemory.save(browser?.scrollAnchor(), for: model.path)
+        }
+        restoresScroll = true
+        scrolledWhileLoading = false
         query = ""
         pendingRename = nil
         model.stop()
@@ -163,8 +177,10 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         folderView.mode = mode
         AppState.shared.setView(folderView, for: model.path)
         let selected = Set(selectedItems.map(\.path))
+        let anchor = browser?.scrollAnchor()
         installBrowser()
         browser?.reload(.loaded)
+        if let anchor { browser?.restoreScroll(anchor) }
         browser?.select(paths: selected, scroll: true)
         browser?.focus()
         delegate?.paneDidNavigate(self)
@@ -218,6 +234,12 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             guard let self else { return }
             self.browser?.reload(change)
             if case .children = change {} else {
+                if case .loaded = change, self.restoresScroll {
+                    self.restoresScroll = false
+                    if !self.scrolledWhileLoading, let anchor = self.scrollMemory.anchor(for: self.model.path) {
+                        self.browser?.restoreScroll(anchor)
+                    }
+                }
                 self.setLoading(false)
                 self.applyPending()
                 if let error = self.model.error, case .loaded = change {
@@ -312,6 +334,14 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
 
     func focusNextPane() {
         delegate?.paneWantsNextPane(self)
+    }
+
+    func scrollAnchor(for path: String) -> ScrollAnchor? {
+        scrollMemory.anchor(for: path)
+    }
+
+    func saveScroll(_ anchor: ScrollAnchor?, for path: String) {
+        scrollMemory.save(anchor, for: path)
     }
 
     func toggleQuickLook() {

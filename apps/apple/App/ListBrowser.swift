@@ -183,6 +183,17 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         view.window?.makeFirstResponder(outlineView)
     }
 
+    func scrollAnchor() -> ScrollAnchor? {
+        ScrollAnchoring.anchor(in: outlineView) { (outlineView.item(atRow: $0) as? FileItem)?.path }
+    }
+
+    func restoreScroll(_ anchor: ScrollAnchor) {
+        ScrollAnchoring.restore(anchor, in: outlineView) { path in
+            let row = row(forPath: path)
+            return row >= 0 ? row : nil
+        }
+    }
+
     func viewDidChange() {
         updateSortIndicator()
         guard updateRowHeight() else { return }
