@@ -130,6 +130,28 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertTrue(operations.move([source], to: makeFolder(root, "other")) { _ in .replace }.replaced.isEmpty)
     }
 
+    func testErrorSummary() throws {
+        var result = OperationResult()
+        XCTAssertNil(result.errorSummary)
+        result.errors = [OperationError(message: "one")]
+        XCTAssertNil(result.errorSummary)
+        result.errors.append(OperationError(message: "two"))
+        let two = try XCTUnwrap(result.errorSummary)
+        XCTAssertEqual(two.message, "2 problems occurred.")
+        XCTAssertEqual(two.details, "one\n\ntwo")
+        result.errors = (1...8).map { OperationError(message: "e\($0)") }
+        let eight = try XCTUnwrap(result.errorSummary)
+        XCTAssertEqual(eight.message, "8 problems occurred.")
+        XCTAssertEqual(eight.details, "e1\n\ne2\n\ne3\n\ne4\n\ne5\n\n…and 3 more.")
+    }
+
+    func testTrashReportsEveryFailure() {
+        let root = makeTemporaryDirectory()
+        let result = operations.trash(["a", "b", "c"].map { root.appending(path: $0) })
+        XCTAssertEqual(result.errors.count, 3)
+        XCTAssertEqual(result.errorSummary?.message, "3 problems occurred.")
+    }
+
     func testRenameValidatesAndAllowsCaseChange() throws {
         let root = makeTemporaryDirectory()
         let file = makeFile(root, "a.txt")
