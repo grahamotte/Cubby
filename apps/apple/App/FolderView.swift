@@ -4,14 +4,12 @@ enum ViewMode: String, Codable, CaseIterable {
     case list
     case icons
     case columns
-    case gallery
 
     var title: String {
         switch self {
         case .list: "List"
         case .icons: "Icons"
         case .columns: "Columns"
-        case .gallery: "Gallery"
         }
     }
 
@@ -20,8 +18,11 @@ enum ViewMode: String, Codable, CaseIterable {
         case .list: "list.bullet"
         case .icons: "square.grid.2x2"
         case .columns: "rectangle.split.3x1"
-        case .gallery: "rectangle.bottomthird.inset.filled"
         }
+    }
+
+    init(from decoder: Decoder) throws {
+        self = ViewMode(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .icons
     }
 }
 

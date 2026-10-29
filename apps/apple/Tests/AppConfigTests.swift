@@ -35,6 +35,14 @@ final class AppConfigTests: XCTestCase {
         XCTAssertEqual(config.theme, "grove")
     }
 
+    func testDecodesGalleryDefaultViewAsIcons() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"showHiddenFiles":true,"defaultView":{"mode":"gallery","iconSize":120},"theme":"grove"}"#.utf8))
+        XCTAssertEqual(config.defaultView.mode, .icons)
+        XCTAssertEqual(config.defaultView.iconSize, 120)
+        XCTAssertTrue(config.showHiddenFiles)
+        XCTAssertEqual(config.theme, "grove")
+    }
+
     func testDecodesVisibility() throws {
         let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"showHiddenFiles":true,"showDSStoreFiles":true}"#.utf8))
         XCTAssertEqual(config.visibility, Visibility(showHidden: true, showDSStore: true))

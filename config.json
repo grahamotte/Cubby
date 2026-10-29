@@ -38,7 +38,7 @@
   "apps": {
     "build": "0.4.0",
     "homebrew": {
-      "desc": "Fast, simple file manager with list, icon, column, and gallery views",
+      "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
       "zap": [
         "~/.config/cubby",

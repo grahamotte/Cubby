@@ -180,7 +180,6 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 ### Icon Tiles
 - **Style:** thumbnail or icon centered above a two-line 12 pt label, Finder-style: the name wraps once and a longer remainder truncates in the middle of the second line. Columns stretch so the grid fills the pane evenly. Icon sizes run from 32 to 512 pt.
 - **Selected:** a neutral resting-selection wash (10 pt radius) behind the icon, and a pill behind the name: solid accent with white text while focused, resting selection when not.
-- **Gallery:** the preview fills the pane above a strip of thumbnails up to 96 pt.
 
 ### Navigation
 - **Breadcrumb:** ancestors from home (or Macintosh HD) in secondary label, separated by tertiary "/", the current folder in label color at weight 500. Each part is clickable.

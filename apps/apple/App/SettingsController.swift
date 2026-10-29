@@ -308,7 +308,7 @@ final class SettingsController: NSViewController {
         let defaultViewCard = card([
             row("View", "How folders you haven't customized are shown.", modePopup),
             row("Sort by", "The column and direction folders are sorted by.", sortControl),
-            row("Icon size", "Icon and gallery thumbnail size.", iconControl),
+            row("Icon size", "Icon view thumbnail size.", iconControl),
         ])
         let profilesCard = CardView()
         profileList.translatesAutoresizingMaskIntoConstraints = false

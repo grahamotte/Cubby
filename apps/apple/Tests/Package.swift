@@ -20,7 +20,6 @@ let package = Package(
                 "CubbyMain.swift",
                 "FileActions.swift",
                 "FileBrowser.swift",
-                "GalleryBrowser.swift",
                 "IconBrowser.swift",
                 "Icons.swift",
                 "Info.plist",

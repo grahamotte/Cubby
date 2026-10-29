@@ -25,7 +25,7 @@ A personal, opinionated Finder replacement, deliberately small: few settings, no
 - Used all day alongside a code editor, terminal, and browser; often on large and deeply nested folders (100k+ entries).
 - Navigation via a user-organized sidebar of nested groups and folders, a path breadcrumb, and the keyboard.
 - One window shows one or more split panes (single, side by side, stacked, three, four). Windows have no tabs.
-- View modes per folder: list (expandable outline with configurable columns), icons, columns, and gallery, with Quick Look thumbnails.
+- View modes per folder: list (expandable outline with configurable columns), icons, and columns, with Quick Look thumbnails.
 - Settings live on a page in the main pane and in `config.json`, which can be edited by hand and reloads live.
 - Distributed as a signed, notarized GitHub release and the `cubby` Homebrew cask; not on the App Store.
 

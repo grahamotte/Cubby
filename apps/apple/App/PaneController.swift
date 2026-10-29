@@ -173,7 +173,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     private var browserMode: ViewMode? {
         switch browser {
         case is ListBrowser: .list
-        case is GalleryBrowser: .gallery
         case is IconBrowser: .icons
         case is ColumnBrowser: .columns
         default: nil
@@ -185,7 +184,6 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         case .list: ListBrowser()
         case .icons: IconBrowser()
         case .columns: ColumnBrowser()
-        case .gallery: GalleryBrowser()
         }
     }
 
@@ -487,7 +485,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             menuItem.state = (menuItem.tag == 0) == folderView.ascending ? .on : .off
             return true
         case #selector(biggerIcons(_:)), #selector(smallerIcons(_:)):
-            return folderView.mode == .icons || folderView.mode == .gallery
+            return folderView.mode == .icons
         case #selector(showPackageContents(_:)):
             return selectedItems.count == 1 && selectedItems[0].isPackage
         default:
