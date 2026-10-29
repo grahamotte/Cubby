@@ -348,6 +348,14 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         browser?.viewDidChange()
     }
 
+    func setListIconSize(_ size: Int) {
+        let clamped = FolderView(mode: folderView.mode, sort: folderView.sort, ascending: folderView.ascending, iconSize: folderView.iconSize, listIconSize: size).listIconSize
+        guard clamped != folderView.listIconSize else { return }
+        folderView.listIconSize = clamped
+        AppState.shared.setView(folderView, for: model.path)
+        browser?.viewDidChange()
+    }
+
     func drop(_ urls: [URL], into directory: URL, operation: NSDragOperation) -> Bool {
         let copy = operation == .copy
         let reveals = directory.standardizedFileURL.path == model.path
@@ -461,8 +469,21 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         setSort(folderView.sort, ascending: sender.tag == 0)
     }
 
-    @objc func biggerIcons(_ sender: Any?) { setIconSize(folderView.iconSize + 16) }
-    @objc func smallerIcons(_ sender: Any?) { setIconSize(folderView.iconSize - 16) }
+    @objc func biggerIcons(_ sender: Any?) {
+        if folderView.mode == .list {
+            setListIconSize(folderView.steppedListIconSize(bigger: true))
+        } else {
+            setIconSize(folderView.iconSize + 16)
+        }
+    }
+
+    @objc func smallerIcons(_ sender: Any?) {
+        if folderView.mode == .list {
+            setListIconSize(folderView.steppedListIconSize(bigger: false))
+        } else {
+            setIconSize(folderView.iconSize - 16)
+        }
+    }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         let hasSelection = !selectedItems.isEmpty
@@ -485,7 +506,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
             menuItem.state = folderView.sort.hasDirection && (menuItem.tag == 0) == folderView.ascending ? .on : .off
             return folderView.sort.hasDirection
         case #selector(biggerIcons(_:)), #selector(smallerIcons(_:)):
-            return folderView.mode == .icons
+            return folderView.mode == .icons || folderView.mode == .list
         case #selector(showPackageContents(_:)):
             return selectedItems.count == 1 && selectedItems[0].isPackage
         default:

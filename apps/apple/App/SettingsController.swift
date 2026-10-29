@@ -676,6 +676,7 @@ final class SettingsController: NSViewController {
             sort: SortKey.allCases[max(sortPopup.indexOfSelectedItem, 0)],
             ascending: orderPopup.indexOfSelectedItem == 0,
             iconSize: iconSlider.integerValue,
+            listIconSize: AppState.shared.defaultView.listIconSize,
         )
         iconValue.stringValue = "\(view.iconSize) pt"
         AppState.shared.defaultView = view

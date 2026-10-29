@@ -38,7 +38,10 @@ final class FileOutlineView: NSOutlineView {
 
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         var frame = super.frameOfOutlineCell(atRow: row)
-        if !frame.isEmpty { frame.origin.x += 8 }
+        if !frame.isEmpty {
+            frame.origin.x += 8
+            frame.origin.y = (rect(ofRow: row).midY - frame.height / 2).rounded()
+        }
         return frame
     }
 
@@ -92,9 +95,9 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         outlineView.allowsColumnResizing = true
         outlineView.columnAutoresizingStyle = .noColumnAutoresizing
         outlineView.style = .plain
+        _ = updateRowHeight()
         outlineView.backgroundColor = .clear
         outlineView.gridStyleMask = []
-        outlineView.rowHeight = 28
         outlineView.intercellSpacing = NSSize(width: 6, height: 0)
         outlineView.autoresizesOutlineColumn = false
         outlineView.indentationPerLevel = 14
@@ -154,6 +157,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             restoreSelection(selected)
         case .loaded:
             items = host?.model.items ?? []
+            _ = updateRowHeight()
             updateCounter()
             outlineView.reloadData()
             updateSortIndicator()
@@ -181,7 +185,20 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     func viewDidChange() {
         updateSortIndicator()
+        guard updateRowHeight() else { return }
+        let visible = outlineView.rows(in: outlineView.visibleRect)
+        outlineView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<outlineView.numberOfRows), columnIndexes: IndexSet(integersIn: 0..<outlineView.numberOfColumns))
+        if visible.length > 0 { outlineView.scrollRowToVisible(visible.location) }
     }
+
+    private func updateRowHeight() -> Bool {
+        let height = max(28, iconSize + 12)
+        guard outlineView.rowHeight != height else { return false }
+        outlineView.rowHeight = height
+        return true
+    }
+
+    private var iconSize: CGFloat { CGFloat(host?.folderView.listIconSize ?? 16) }
 
     func beginRename(path: String) {
         select(paths: [path], scroll: true)
@@ -381,9 +398,9 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         guard let item = item as? FileItem, let tableColumn else { return nil }
         let id = tableColumn.identifier
         if id.rawValue == "name" {
-            let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NSTableCellView) ?? makeNameCell(id)
+            let cell = (outlineView.makeView(withIdentifier: id, owner: nil) as? NameCell) ?? NameCell(identifier: id)
             cell.textField?.attributedStringValue = FileFormat.name(item.name, query: host?.model.query ?? "", font: ListBrowser.nameFont, color: Theme.text)
-            cell.imageView?.image = IconCache.shared.icon(for: item)
+            cell.configure(item, iconSize: iconSize, scale: view.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2)
             cell.alphaValue = item.isHidden || isCut(item) ? 0.5 : 1
             return cell
         }
@@ -452,34 +469,6 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         return !cut.isEmpty && cut.contains { $0.path == item.path }
     }
 
-    private func makeNameCell(_ id: NSUserInterfaceItemIdentifier) -> NSTableCellView {
-        let cell = NSTableCellView()
-        cell.identifier = id
-        let image = NSImageView()
-        image.translatesAutoresizingMaskIntoConstraints = false
-        image.imageScaling = .scaleProportionallyUpOrDown
-        let label = NSTextField(labelWithString: "")
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.font = ListBrowser.nameFont
-        label.textColor = Theme.text
-        label.lineBreakMode = .byTruncatingMiddle
-        label.cell?.truncatesLastVisibleLine = true
-        cell.addSubview(image)
-        cell.addSubview(label)
-        cell.imageView = image
-        cell.textField = label
-        NSLayoutConstraint.activate([
-            image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 2),
-            image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            image.widthAnchor.constraint(equalToConstant: 16),
-            image.heightAnchor.constraint(equalToConstant: 16),
-            label.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 6),
-            label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -2),
-            label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-        ])
-        return cell
-    }
-
     private func makeTextCell(_ id: NSUserInterfaceItemIdentifier, alignment: NSTextAlignment) -> NSTableCellView {
         let cell = NSTableCellView()
         cell.identifier = id
@@ -497,6 +486,67 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             label.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
         ])
         return cell
+    }
+}
+
+final class NameCell: NSTableCellView {
+    private let icon = NSImageView()
+    private var iconWidth: NSLayoutConstraint!
+    private var iconHeight: NSLayoutConstraint!
+    private var item: FileItem?
+    private var thumbnailSize: CGFloat = 0
+
+    init(identifier: NSUserInterfaceItemIdentifier) {
+        super.init(frame: .zero)
+        self.identifier = identifier
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        let label = NSTextField(labelWithString: "")
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = ListBrowser.nameFont
+        label.textColor = Theme.text
+        label.lineBreakMode = .byTruncatingMiddle
+        label.cell?.truncatesLastVisibleLine = true
+        addSubview(icon)
+        addSubview(label)
+        imageView = icon
+        textField = label
+        iconWidth = icon.widthAnchor.constraint(equalToConstant: 16)
+        iconHeight = icon.heightAnchor.constraint(equalToConstant: 16)
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconWidth,
+            iconHeight,
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    func configure(_ item: FileItem, iconSize: CGFloat, scale: CGFloat) {
+        let previous = self.item
+        if let previous, previous !== item || thumbnailSize != iconSize {
+            ThumbnailCache.shared.cancel(for: previous, size: thumbnailSize)
+        }
+        self.item = item
+        thumbnailSize = iconSize
+        iconWidth.constant = iconSize
+        iconHeight.constant = iconSize
+        if let cached = ThumbnailCache.shared.cached(for: item, size: iconSize) {
+            icon.image = cached.image
+            return
+        }
+        icon.image = IconCache.shared.icon(for: item)
+        guard ThumbnailCache.wantsThumbnail(item) else { return }
+        ThumbnailCache.shared.thumbnail(for: item, size: iconSize, scale: scale) { [weak self] thumbnail in
+            guard let self, self.item === item, self.thumbnailSize == iconSize else { return }
+            self.icon.image = thumbnail.image
+        }
     }
 }
 

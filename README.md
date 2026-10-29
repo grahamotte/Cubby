@@ -22,7 +22,7 @@ Cubby requires macOS 27 or later.
 
 The top bar shows the current folder as a breadcrumb; click any part of it to jump there. Beside it are **Filter** (⌘F), the view mode, and the pane layout.
 
-- **Views**: list (⌘1), icons (⌘2), and columns (⌘3). The list view has sortable, resizable columns and folders that expand in place. The icon view shows Quick Look thumbnails, and Space opens Quick Look.
+- **Views**: list (⌘1), icons (⌘2), and columns (⌘3). The list view has sortable, resizable columns and folders that expand in place. The list and icon views show Quick Look thumbnails (⌘+ and ⌘− resize them), and Space opens Quick Look.
 - **Layouts**: one pane, side by side, stacked, three panes, or four panes (⌥⌘1 to ⌥⌘5). Each pane browses on its own, so you can drag files between them.
 - **Per-folder views**: each folder remembers its view, sort, and icon size. The memory follows a folder when it is renamed or moved. Random sort (⌃⌘8) shuffles a folder in an order that stays put all day and changes the next day.
 

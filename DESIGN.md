@@ -173,7 +173,7 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 - **Menus:** view mode and layout open a plain menu from the button with a checkmark on the current choice.
 
 ### File Rows (list, columns, sidebar)
-- **Style:** no alternating stripes, no grid lines; 13 pt name with a 16 pt file icon.
+- **Style:** no alternating stripes, no grid lines; 13 pt name with a 16 pt file icon. List rows show Quick Look thumbnails in place of icons once loaded, and ⌘+ / ⌘− step the list icon size from 16 to 128 pt with rows 12 pt taller than the icon (28 pt minimum).
 - **Selected:** a rounded accent wash at 20% (6 pt radius) while focused, resting selection when not; text keeps its normal color.
 - **Sidebar:** monochrome folder symbols in secondary label color; missing folders show an orange warning symbol at 60% opacity. Groups have no disclosure triangle: the name in tertiary label is followed by a small chevron and toggles on click.
 
