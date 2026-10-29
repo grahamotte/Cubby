@@ -24,6 +24,18 @@ final class FolderCounterTests: XCTestCase {
         XCTAssertEqual(counter.count(for: folder.path), 2)
     }
 
+    func testKnownCountsSkipFailures() {
+        let directory = makeTemporaryDirectory()
+        let folder = makeFolder(directory, "Folder")
+        makeFile(folder, "a.txt")
+        let missing = directory.appendingPathComponent("missing").path
+        let counter = FolderCounter(root: directory.path, visibility: .standard)
+        _ = counter.count(for: folder.path)
+        _ = counter.count(for: missing)
+        waitForChange(counter) { !counter.isCounting(folder.path) && !counter.isCounting(missing) }
+        XCTAssertEqual(counter.knownCounts, [folder.path: 1])
+    }
+
     func testVisibilityChangeRecounts() {
         let directory = makeTemporaryDirectory()
         let folder = makeFolder(directory, "Folder")
