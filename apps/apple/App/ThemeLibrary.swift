@@ -28,6 +28,7 @@ enum ThemeRole: String, CaseIterable {
     case accent
     case accentText
     case warning
+    case knob
 }
 
 enum ThemeColor: Equatable {
@@ -122,38 +123,38 @@ struct ThemeLibrary: Equatable {
         ThemeDefinition(
             id: "workbench",
             name: "Workbench",
-            light: ThemePalette([.content: "#FCFCFB", .sidebar: "#F1F1EF", .card: "#FFFFFF", .divider: "#00000012", .text: "#000000D9", .secondaryText: "#00000080", .tertiaryText: "#00000042", .icon: "#00000080", .sidebarText: "#000000D9", .sidebarSecondaryText: "#00000042", .accent: "system", .accentText: "#FFFFFF", .warning: "#FF9500"]),
-            dark: ThemePalette([.content: "#1E1F21", .sidebar: "#17181A", .card: "#28292B", .divider: "#FFFFFF12", .text: "#FFFFFFD9", .secondaryText: "#FFFFFF8C", .tertiaryText: "#FFFFFF40", .icon: "#FFFFFF8C", .sidebarText: "#FFFFFFD9", .sidebarSecondaryText: "#FFFFFF40", .accent: "system", .accentText: "#FFFFFF", .warning: "#FF9F0A"]),
+            light: ThemePalette([.content: "#FCFCFB", .sidebar: "#F1F1EF", .card: "#FFFFFF", .divider: "#00000012", .text: "#000000D9", .secondaryText: "#00000080", .tertiaryText: "#00000042", .icon: "#00000080", .sidebarText: "#000000D9", .sidebarSecondaryText: "#00000042", .accent: "system", .accentText: "#FFFFFF", .warning: "#FF9500", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#1E1F21", .sidebar: "#17181A", .card: "#28292B", .divider: "#FFFFFF12", .text: "#FFFFFFD9", .secondaryText: "#FFFFFF8C", .tertiaryText: "#FFFFFF40", .icon: "#FFFFFF8C", .sidebarText: "#FFFFFFD9", .sidebarSecondaryText: "#FFFFFF40", .accent: "system", .accentText: "#FFFFFF", .warning: "#FF9F0A", .knob: "#F2F2F2"]),
         ),
         ThemeDefinition(
             id: "bubblegum",
             name: "Bubblegum",
-            light: ThemePalette([.content: "#FDF7FD", .sidebar: "#F2E1F4", .card: "#FAF3FB", .divider: "#EEE1ED", .text: "#501854", .secondaryText: "#AC1668", .tertiaryText: "#AC1668B3", .icon: "#AC1668", .sidebarText: "#454554", .sidebarSecondaryText: "#AC1668", .accent: "#DB2777", .accentText: "#FFFFFF", .warning: "#F59E0B"]),
-            dark: ThemePalette([.content: "#1F1A24", .sidebar: "#171018", .card: "#29232D", .divider: "#27242C", .text: "#F9F8FB", .secondaryText: "#E7D0DD", .tertiaryText: "#E7D0DDB3", .icon: "#D4C7E1", .sidebarText: "#F4F4F5", .sidebarSecondaryText: "#E7D0DD", .accent: "#A3004C", .accentText: "#FBD0E8", .warning: "#F59E0B"]),
+            light: ThemePalette([.content: "#FDF7FD", .sidebar: "#F2E1F4", .card: "#FAF3FB", .divider: "#EEE1ED", .text: "#501854", .secondaryText: "#AC1668", .tertiaryText: "#AC1668B3", .icon: "#AC1668", .sidebarText: "#454554", .sidebarSecondaryText: "#AC1668", .accent: "#DB2777", .accentText: "#FFFFFF", .warning: "#F59E0B", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#1F1A24", .sidebar: "#171018", .card: "#29232D", .divider: "#27242C", .text: "#F9F8FB", .secondaryText: "#E7D0DD", .tertiaryText: "#E7D0DDB3", .icon: "#D4C7E1", .sidebarText: "#F4F4F5", .sidebarSecondaryText: "#E7D0DD", .accent: "#A3004C", .accentText: "#FBD0E8", .warning: "#F59E0B", .knob: "#F9F8FB"]),
         ),
         ThemeDefinition(
             id: "grove",
             name: "Grove",
-            light: ThemePalette([.content: "#F3F7F4", .sidebar: "#E2EDE7", .card: "#F3F7F4", .divider: "#CBD5D1", .text: "#241523", .secondaryText: "#746C73", .tertiaryText: "#746C73B3", .icon: "#746C73", .sidebarText: "#241523", .sidebarSecondaryText: "#6B666C", .accent: "#1B7D50", .accentText: "#FFFAFF", .warning: "#FE9A00"]),
-            dark: ThemePalette([.content: "#1B2821", .sidebar: "#21362B", .card: "#1B2821", .divider: "#415F4F", .text: "#FFFAFF", .secondaryText: "#919595", .tertiaryText: "#919595B3", .icon: "#919595", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#9DA3A2", .accent: "#69D69A", .accentText: "#241523", .warning: "#FE9A00"]),
+            light: ThemePalette([.content: "#F3F7F4", .sidebar: "#E2EDE7", .card: "#F3F7F4", .divider: "#CBD5D1", .text: "#241523", .secondaryText: "#746C73", .tertiaryText: "#746C73B3", .icon: "#746C73", .sidebarText: "#241523", .sidebarSecondaryText: "#6B666C", .accent: "#1B7D50", .accentText: "#FFFAFF", .warning: "#FE9A00", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#1B2821", .sidebar: "#21362B", .card: "#1B2821", .divider: "#415F4F", .text: "#FFFAFF", .secondaryText: "#919595", .tertiaryText: "#919595B3", .icon: "#919595", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#9DA3A2", .accent: "#69D69A", .accentText: "#241523", .warning: "#FE9A00", .knob: "#FFFAFF"]),
         ),
         ThemeDefinition(
             id: "ocean",
             name: "Ocean",
-            light: ThemePalette([.content: "#F5F7F8", .sidebar: "#E4ECF2", .card: "#F5F7F8", .divider: "#CDD4DC", .text: "#241523", .secondaryText: "#746C75", .tertiaryText: "#746C75B3", .icon: "#746C75", .sidebarText: "#241523", .sidebarSecondaryText: "#6C6570", .accent: "#2672AF", .accentText: "#FFFAFF", .warning: "#FE9A00"]),
-            dark: ThemePalette([.content: "#17212B", .sidebar: "#1E2D3B", .card: "#17212B", .divider: "#405567", .text: "#FFFAFF", .secondaryText: "#8D8F97", .tertiaryText: "#8D8F97B3", .icon: "#8D8F97", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#989CA5", .accent: "#70B9EE", .accentText: "#241523", .warning: "#FE9A00"]),
+            light: ThemePalette([.content: "#F5F7F8", .sidebar: "#E4ECF2", .card: "#F5F7F8", .divider: "#CDD4DC", .text: "#241523", .secondaryText: "#746C75", .tertiaryText: "#746C75B3", .icon: "#746C75", .sidebarText: "#241523", .sidebarSecondaryText: "#6C6570", .accent: "#2672AF", .accentText: "#FFFAFF", .warning: "#FE9A00", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#17212B", .sidebar: "#1E2D3B", .card: "#17212B", .divider: "#405567", .text: "#FFFAFF", .secondaryText: "#8D8F97", .tertiaryText: "#8D8F97B3", .icon: "#8D8F97", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#989CA5", .accent: "#70B9EE", .accentText: "#241523", .warning: "#FE9A00", .knob: "#FFFAFF"]),
         ),
         ThemeDefinition(
             id: "ember",
             name: "Ember",
-            light: ThemePalette([.content: "#F9F7F5", .sidebar: "#F3EAE5", .card: "#F9F7F5", .divider: "#DDD2CE", .text: "#241523", .secondaryText: "#766C74", .tertiaryText: "#766C74B3", .icon: "#766C74", .sidebarText: "#241523", .sidebarSecondaryText: "#71646B", .accent: "#AE552A", .accentText: "#FFFAFF", .warning: "#FE9A00"]),
-            dark: ThemePalette([.content: "#291E1A", .sidebar: "#39281F", .card: "#291E1A", .divider: "#664C3F", .text: "#FFFAFF", .secondaryText: "#968E8F", .tertiaryText: "#968E8FB3", .icon: "#968E8F", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#A49998", .accent: "#F09A64", .accentText: "#241523", .warning: "#FE9A00"]),
+            light: ThemePalette([.content: "#F9F7F5", .sidebar: "#F3EAE5", .card: "#F9F7F5", .divider: "#DDD2CE", .text: "#241523", .secondaryText: "#766C74", .tertiaryText: "#766C74B3", .icon: "#766C74", .sidebarText: "#241523", .sidebarSecondaryText: "#71646B", .accent: "#AE552A", .accentText: "#FFFAFF", .warning: "#FE9A00", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#291E1A", .sidebar: "#39281F", .card: "#291E1A", .divider: "#664C3F", .text: "#FFFAFF", .secondaryText: "#968E8F", .tertiaryText: "#968E8FB3", .icon: "#968E8F", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#A49998", .accent: "#F09A64", .accentText: "#241523", .warning: "#FE9A00", .knob: "#FFFAFF"]),
         ),
         ThemeDefinition(
             id: "iris",
             name: "Iris",
-            light: ThemePalette([.content: "#F8F7F9", .sidebar: "#EDEAF4", .card: "#F8F7F9", .divider: "#D6D1DE", .text: "#241523", .secondaryText: "#766C76", .tertiaryText: "#766C76B3", .icon: "#766C76", .sidebarText: "#241523", .sidebarSecondaryText: "#6F6471", .accent: "#7253B9", .accentText: "#FFFAFF", .warning: "#FE9A00"]),
-            dark: ThemePalette([.content: "#1D1929", .sidebar: "#272139", .card: "#1D1929", .divider: "#4D4366", .text: "#FFFAFF", .secondaryText: "#8E8A95", .tertiaryText: "#8E8A95B3", .icon: "#8E8A95", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#9792A0", .accent: "#9D7DF2", .accentText: "#241523", .warning: "#FE9A00"]),
+            light: ThemePalette([.content: "#F8F7F9", .sidebar: "#EDEAF4", .card: "#F8F7F9", .divider: "#D6D1DE", .text: "#241523", .secondaryText: "#766C76", .tertiaryText: "#766C76B3", .icon: "#766C76", .sidebarText: "#241523", .sidebarSecondaryText: "#6F6471", .accent: "#7253B9", .accentText: "#FFFAFF", .warning: "#FE9A00", .knob: "#FFFFFF"]),
+            dark: ThemePalette([.content: "#1D1929", .sidebar: "#272139", .card: "#1D1929", .divider: "#4D4366", .text: "#FFFAFF", .secondaryText: "#8E8A95", .tertiaryText: "#8E8A95B3", .icon: "#8E8A95", .sidebarText: "#FFFAFF", .sidebarSecondaryText: "#9792A0", .accent: "#9D7DF2", .accentText: "#241523", .warning: "#FE9A00", .knob: "#FFFAFF"]),
         ),
     ]
 

@@ -16,6 +16,7 @@ enum Theme {
     static let accent = color(.accent)
     static let accentText = color(.accentText)
     static let warning = color(.warning)
+    static let knob = color(.knob)
 
     static let selection = NSColor(name: nil) { appearance in
         resolve(.accent, appearance).withAlphaComponent(0.2)

@@ -64,6 +64,8 @@ final class ThemeLibraryTests: XCTestCase {
         XCTAssertEqual(sakura.dark[.accent].string, "#F07AA2")
         XCTAssertEqual(sakura.light[.sidebar], ThemeLibrary.builtIn[0].light[.sidebar])
         XCTAssertEqual(sakura.dark[.content], ThemeLibrary.builtIn[0].dark[.content])
+        XCTAssertEqual(sakura.light[.knob].string, "#FFFFFF")
+        XCTAssertEqual(sakura.dark[.knob], ThemeLibrary.builtIn[0].dark[.knob])
     }
 
     func testMissingDirectoryLoadsBuiltIns() {

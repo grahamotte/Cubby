@@ -310,13 +310,13 @@ final class SettingsController: NSViewController {
     private var expandedProfile: Int?
     private var profileLayout: (count: Int, expanded: Int?, themes: ThemeLibrary?)?
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
-    private let hiddenSwitch = NSSwitch()
-    private let dsStoreSwitch = NSSwitch()
+    private let hiddenSwitch = ThemedSwitch()
+    private let dsStoreSwitch = ThemedSwitch()
     private var dsStoreRow: NSView?
     private let modePopup = SettingsController.popup()
     private let sortPopup = SettingsController.popup()
     private let orderPopup = SettingsController.popup()
-    private let iconSlider = NSSlider(value: 80, minValue: Double(FolderView.iconSizes.lowerBound), maxValue: Double(FolderView.iconSizes.upperBound), target: nil, action: nil)
+    private let iconSlider = ThemedSlider(value: 80, minValue: Double(FolderView.iconSizes.lowerBound), maxValue: Double(FolderView.iconSizes.upperBound), target: nil, action: nil)
     private let iconValue = NSTextField(labelWithString: "")
     private let header = NSTextField(labelWithString: "Settings")
     private lazy var backButton = PlainButton.make("chevron.left", "Back to Settings", target: self, action: #selector(showMain(_:)))
@@ -361,10 +361,8 @@ final class SettingsController: NSViewController {
         themeErrors.font = .systemFont(ofSize: 12)
         themeErrors.textColor = Theme.warning
 
-        hiddenSwitch.controlSize = .small
         hiddenSwitch.target = self
         hiddenSwitch.action = #selector(hiddenChanged(_:))
-        dsStoreSwitch.controlSize = .small
         dsStoreSwitch.target = self
         dsStoreSwitch.action = #selector(dsStoreChanged(_:))
 
@@ -377,7 +375,6 @@ final class SettingsController: NSViewController {
         orderPopup.addItems(withTitles: ["Ascending", "Descending"])
 
         iconSlider.controlSize = .small
-        iconSlider.trackFillColor = Theme.accent
         iconSlider.isContinuous = true
         iconSlider.target = self
         iconSlider.action = #selector(defaultViewChanged(_:))
@@ -799,11 +796,11 @@ final class SettingsController: NSViewController {
         AppState.shared.colorScheme = ColorScheme.allCases[max(sender.indexOfSelectedItem, 0)]
     }
 
-    @objc private func hiddenChanged(_ sender: NSSwitch) {
+    @objc private func hiddenChanged(_ sender: ThemedSwitch) {
         AppState.shared.showHiddenFiles = sender.state == .on
     }
 
-    @objc private func dsStoreChanged(_ sender: NSSwitch) {
+    @objc private func dsStoreChanged(_ sender: ThemedSwitch) {
         AppState.shared.showDSStoreFiles = sender.state == .on
     }
 
