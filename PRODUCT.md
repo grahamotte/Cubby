@@ -35,7 +35,7 @@ A personal, opinionated Finder replacement, deliberately small: few settings, no
 - Per-folder views follow a folder across renames and moves.
 - Must stay fast: per-item work is lazy and per-row drawing is cheap; no per-row visual effects that cost time on huge folders.
 - Keep it simple and light on options: prefer too few settings to too many.
-- Themes: Settings > Theme picks a theme and a color scheme (System, Light, Dark). Each theme has a light and a dark variant that follows the appearance; built-ins are Workbench, Bubblegum, Grove, Ocean, Ember, and Iris, and extra themes are JSON files in `~/.config/cubby/themes` (not surfaced in the UI).
+- Themes: each profile has its own theme, picked in its Settings > Profiles row, so switching profiles switches the look; Settings > Appearance picks the color scheme (System, Light, Dark) for all profiles. Each theme has a light and a dark variant that follows the appearance; built-ins are Workbench, Bubblegum, Grove, Ocean, Ember, and Iris, and extra themes are JSON files in `~/.config/cubby/themes` (not surfaced in the UI).
 
 ## Evidence on Hand
 

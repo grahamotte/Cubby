@@ -66,12 +66,102 @@ final class ThemeTile: NSView {
     }
 }
 
+final class ThemeSwatch: NSView {
+    var theme: ThemeDefinition? {
+        didSet { needsDisplay = true }
+    }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: 30, height: 14) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let theme else { return }
+        for (index, palette) in [theme.light, theme.dark].enumerated() {
+            let orb = NSBezierPath(ovalIn: NSRect(x: 1 + CGFloat(index) * 15, y: 1, width: 12, height: 12))
+            NSGradient(colors: [Theme.nsColor(palette[.content]), Theme.nsColor(palette[.accent])])?.draw(in: orb, relativeCenterPosition: NSPoint(x: -0.4, y: 0.4))
+            Theme.divider.setStroke()
+            orb.lineWidth = 1
+            orb.stroke()
+        }
+    }
+}
+
+final class ProfileHeader: NSView {
+    private let chevron = NSImageView()
+    private let icon = NSImageView()
+    private let name = NSTextField(labelWithString: "")
+    private let swatch = ThemeSwatch()
+    private let themeName = NSTextField(labelWithString: "")
+    let index: Int
+    var onToggle: (() -> Void)?
+
+    init(index: Int) {
+        self.index = index
+        super.init(frame: .zero)
+        setAccessibilityRole(.button)
+        chevron.symbolConfiguration = .init(pointSize: 10, weight: .semibold)
+        chevron.contentTintColor = Theme.icon
+        icon.symbolConfiguration = .init(pointSize: 14, weight: .regular)
+        icon.contentTintColor = Theme.icon
+        name.font = .systemFont(ofSize: 13, weight: .medium)
+        name.textColor = Theme.text
+        name.lineBreakMode = .byTruncatingTail
+        name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        themeName.font = .systemFont(ofSize: 12)
+        themeName.textColor = Theme.secondaryText
+        for view in [chevron, icon, name, swatch, themeName] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(view)
+        }
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 48),
+            chevron.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            chevron.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            icon.leadingAnchor.constraint(equalTo: chevron.trailingAnchor, constant: 10),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 20),
+            name.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            name.centerYAnchor.constraint(equalTo: centerYAnchor),
+            name.trailingAnchor.constraint(lessThanOrEqualTo: swatch.leadingAnchor, constant: -12),
+            swatch.trailingAnchor.constraint(equalTo: themeName.leadingAnchor, constant: -8),
+            swatch.centerYAnchor.constraint(equalTo: centerYAnchor),
+            themeName.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            themeName.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    func update(_ profile: SidebarProfile, theme: ThemeDefinition, expanded: Bool) {
+        chevron.image = NSImage(systemSymbolName: expanded ? "chevron.down" : "chevron.right", accessibilityDescription: nil)
+        icon.image = NSImage(systemSymbolName: profile.icon, accessibilityDescription: nil)
+        name.stringValue = profile.name
+        swatch.theme = theme
+        themeName.stringValue = theme.name
+        setAccessibilityLabel("\(profile.name), \(theme.name)")
+        setAccessibilityExpanded(expanded)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onToggle?()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onToggle?()
+        return true
+    }
+}
+
 final class ProfileRow: NSView {
     let index: Int
     let iconButton = PlainButton.make(SidebarProfile.icons[0], "Change Icon", target: nil, action: nil)
     let nameField = NSTextField()
     let deleteButton = PlainButton.make("trash", "Delete Profile", target: nil, action: nil)
+    let collapseButton = PlainButton.make("chevron.down", "Collapse Profile", target: nil, action: nil)
     private var popover: NSPopover?
+    var onCollapse: (() -> Void)?
 
     init(index: Int) {
         self.index = index
@@ -80,6 +170,9 @@ final class ProfileRow: NSView {
         iconButton.action = #selector(pickIcon(_:))
         deleteButton.target = self
         deleteButton.action = #selector(delete(_:))
+        collapseButton.target = self
+        collapseButton.action = #selector(collapse(_:))
+        collapseButton.symbolConfiguration = .init(pointSize: 10, weight: .semibold)
         nameField.isBordered = false
         nameField.drawsBackground = false
         nameField.focusRingType = .none
@@ -95,22 +188,24 @@ final class ProfileRow: NSView {
         iconBackground.color = Theme.inactiveSelection
         iconBackground.cornerRadius = 6
         iconBackground.addSubview(iconButton)
-        for view in [iconBackground, nameField, deleteButton] {
+        for view in [collapseButton, iconBackground, nameField, deleteButton] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 48),
-            iconBackground.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            collapseButton.centerXAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            collapseButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconBackground.centerXAnchor.constraint(equalTo: leadingAnchor, constant: 46),
             iconBackground.centerYAnchor.constraint(equalTo: centerYAnchor),
             iconBackground.widthAnchor.constraint(equalToConstant: 30),
             iconBackground.heightAnchor.constraint(equalToConstant: 28),
             iconButton.centerXAnchor.constraint(equalTo: iconBackground.centerXAnchor),
             iconButton.centerYAnchor.constraint(equalTo: iconBackground.centerYAnchor),
-            nameField.leadingAnchor.constraint(equalTo: iconBackground.trailingAnchor, constant: 10),
+            nameField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 64),
             nameField.centerYAnchor.constraint(equalTo: centerYAnchor),
             nameField.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -12),
-            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             deleteButton.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
@@ -142,6 +237,10 @@ final class ProfileRow: NSView {
         if state.profiles.indices.contains(index) {
             sender.stringValue = state.profiles[index].name
         }
+    }
+
+    @objc private func collapse(_ sender: Any?) {
+        onCollapse?()
     }
 
     @objc private func pickIcon(_ sender: NSButton) {
@@ -208,9 +307,9 @@ final class SettingsController: NSViewController {
 
     private let schemePopup = SettingsController.popup()
     private let profileList = NSStackView()
-    private let themeGrid = NSStackView()
+    private var expandedProfile: Int?
+    private var profileLayout: (count: Int, expanded: Int?, themes: ThemeLibrary?)?
     private let themeErrors = NSTextField(wrappingLabelWithString: "")
-    private var shownThemes: ThemeLibrary?
     private let hiddenSwitch = NSSwitch()
     private let dsStoreSwitch = NSSwitch()
     private var dsStoreRow: NSView?
@@ -258,9 +357,7 @@ final class SettingsController: NSViewController {
         schemePopup.action = #selector(schemeChanged(_:))
         profileList.orientation = .vertical
         profileList.spacing = 0
-        themeGrid.orientation = .vertical
-        themeGrid.alignment = .leading
-        themeGrid.spacing = 10
+        expandedProfile = AppState.shared.profile
         themeErrors.font = .systemFont(ofSize: 12)
         themeErrors.textColor = Theme.warning
 
@@ -324,10 +421,9 @@ final class SettingsController: NSViewController {
         let sections: [NSView] = [
             profilesTitle,
             profilesCard,
-            sectionTitle("Theme"),
-            appearanceCard,
-            themeGrid,
             themeErrors,
+            sectionTitle("Appearance"),
+            appearanceCard,
             sectionTitle("General"),
             generalCard,
             sectionTitle("Default view"),
@@ -337,10 +433,10 @@ final class SettingsController: NSViewController {
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
-        for view in [profilesCard, themeGrid, themeErrors, generalCard] {
+        for view in [profilesCard, themeErrors, appearanceCard, generalCard] {
             stack.setCustomSpacing(28, after: view)
         }
-        for view in sections where view is CardView || view === themeGrid || view === themeErrors || view === profilesTitle {
+        for view in sections where view is CardView || view === themeErrors || view === profilesTitle {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
@@ -511,13 +607,16 @@ final class SettingsController: NSViewController {
         return button
     }
 
-    private func rebuildThemeGrid(_ library: ThemeLibrary) {
-        themeGrid.arrangedSubviews.forEach { $0.removeFromSuperview() }
+    private func themeGrid(_ library: ThemeLibrary, profile index: Int) -> NSStackView {
+        let grid = NSStackView()
+        grid.orientation = .vertical
+        grid.alignment = .leading
+        grid.spacing = 10
         let columns = 3
         for start in stride(from: 0, to: library.themes.count, by: columns) {
             var views: [NSView] = library.themes[start..<min(start + columns, library.themes.count)].map { theme in
                 let tile = ThemeTile(theme: theme)
-                tile.onSelect = { AppState.shared.selectTheme($0.id) }
+                tile.onSelect = { AppState.shared.setTheme($0.id, forProfile: index) }
                 return tile
             }
             while views.count < columns {
@@ -526,39 +625,87 @@ final class SettingsController: NSViewController {
             let row = NSStackView(views: views)
             row.distribution = .fillEqually
             row.spacing = 10
-            themeGrid.addArrangedSubview(row)
-            row.widthAnchor.constraint(equalTo: themeGrid.widthAnchor).isActive = true
+            grid.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: grid.widthAnchor).isActive = true
         }
-        themeErrors.stringValue = library.errors.joined(separator: "\n")
-        themeErrors.isHidden = library.errors.isEmpty
+        return grid
     }
 
     private func refreshProfiles(_ state: AppState) {
         let profiles = state.profiles
-        let rows = profileList.arrangedSubviews.compactMap { $0 as? ProfileRow }
-        if rows.count != profiles.count {
-            profileList.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for index in profiles.indices {
-                if index > 0 {
-                    let divider = FillView()
-                    divider.color = Theme.divider
-                    divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
-                    profileList.addArrangedSubview(divider)
-                    divider.leadingAnchor.constraint(equalTo: profileList.leadingAnchor, constant: 16).isActive = true
-                    divider.trailingAnchor.constraint(equalTo: profileList.trailingAnchor).isActive = true
+        if let expanded = expandedProfile, !profiles.indices.contains(expanded) {
+            expandedProfile = state.profile
+        }
+        let layout = (count: profiles.count, expanded: expandedProfile, themes: Optional(state.themes))
+        if profileLayout.map({ $0.count != layout.count || $0.expanded != layout.expanded || $0.themes != layout.themes }) ?? true {
+            if let previous = profileLayout, previous.count != layout.count {
+                expandedProfile = state.profile
+            }
+            profileLayout = (profiles.count, expandedProfile, state.themes)
+            rebuildProfiles(state)
+        }
+        let selected = expandedProfile.map { state.themes.theme(id: state.config.themeID(at: $0)).id }
+        for view in profileList.arrangedSubviews {
+            if let header = view as? ProfileHeader {
+                header.update(profiles[header.index], theme: state.themes.theme(id: state.config.themeID(at: header.index)), expanded: header.index == expandedProfile)
+            } else if let row = view as? ProfileRow {
+                row.update(profiles[row.index], canDelete: profiles.count > 1)
+            } else if let grid = view as? NSStackView {
+                for case let row as NSStackView in grid.arrangedSubviews {
+                    for case let tile as ThemeTile in row.arrangedSubviews {
+                        tile.isSelected = tile.theme.id == selected
+                    }
                 }
-                let row = ProfileRow(index: index)
-                profileList.addArrangedSubview(row)
-                row.widthAnchor.constraint(equalTo: profileList.widthAnchor).isActive = true
             }
         }
-        for row in profileList.arrangedSubviews.compactMap({ $0 as? ProfileRow }) {
-            row.update(profiles[row.index], canDelete: profiles.count > 1)
+        themeErrors.stringValue = state.themes.errors.joined(separator: "\n")
+        themeErrors.isHidden = state.themes.errors.isEmpty
+    }
+
+    private func rebuildProfiles(_ state: AppState) {
+        profileList.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for index in state.profiles.indices {
+            if index > 0 {
+                addProfileView(divider(), inset: 16)
+            }
+            guard index == expandedProfile else {
+                let header = ProfileHeader(index: index)
+                header.onToggle = { [weak self] in self?.toggleProfile(index) }
+                addProfileView(header)
+                continue
+            }
+            let row = ProfileRow(index: index)
+            row.onCollapse = { [weak self] in self?.toggleProfile(index) }
+            addProfileView(row)
+            addProfileView(themeGrid(state.themes, profile: index), inset: 16, trailing: 16)
+            let spacer = NSView()
+            spacer.heightAnchor.constraint(equalToConstant: 16).isActive = true
+            addProfileView(spacer)
         }
+    }
+
+    private func addProfileView(_ view: NSView, inset: CGFloat = 0, trailing: CGFloat = 0) {
+        profileList.addArrangedSubview(view)
+        view.leadingAnchor.constraint(equalTo: profileList.leadingAnchor, constant: inset).isActive = true
+        view.trailingAnchor.constraint(equalTo: profileList.trailingAnchor, constant: -trailing).isActive = true
+    }
+
+    private func divider() -> NSView {
+        let divider = FillView()
+        divider.color = Theme.divider
+        divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return divider
+    }
+
+    private func toggleProfile(_ index: Int) {
+        expandedProfile = expandedProfile == index ? nil : index
+        refreshProfiles(AppState.shared)
     }
 
     @objc private func addProfile(_ sender: Any?) {
         let index = AppState.shared.addProfile()
+        expandedProfile = index
+        refreshProfiles(AppState.shared)
         guard let row = profileList.arrangedSubviews.compactMap({ $0 as? ProfileRow }).first(where: { $0.index == index }) else { return }
         view.window?.makeFirstResponder(row.nameField)
     }
@@ -634,16 +781,6 @@ final class SettingsController: NSViewController {
         let state = AppState.shared
         refreshProfiles(state)
         schemePopup.selectItem(at: ColorScheme.allCases.firstIndex(of: state.colorScheme) ?? 0)
-        if shownThemes != state.themes {
-            shownThemes = state.themes
-            rebuildThemeGrid(state.themes)
-        }
-        let selectedTheme = state.theme.id
-        for case let row as NSStackView in themeGrid.arrangedSubviews {
-            for case let tile as ThemeTile in row.arrangedSubviews {
-                tile.isSelected = tile.theme.id == selectedTheme
-            }
-        }
         hiddenSwitch.state = state.showHiddenFiles ? .on : .off
         dsStoreSwitch.state = state.showDSStoreFiles ? .on : .off
         if let dsStoreRow {

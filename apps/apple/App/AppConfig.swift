@@ -6,7 +6,6 @@ struct AppConfig: Codable {
     var defaultView: FolderView
     var terminal: String
     var appearance: ColorScheme
-    var theme: String
     private(set) var profiles: [SidebarProfile]
     private(set) var profile: Int
 
@@ -49,8 +48,11 @@ struct AppConfig: Codable {
         self.defaultView = defaultView
         self.terminal = terminal
         self.appearance = appearance
-        self.theme = theme
-        self.profiles = profiles.isEmpty ? [SidebarProfile.personal([])] : profiles
+        self.profiles = (profiles.isEmpty ? [SidebarProfile.personal([])] : profiles).map { profile in
+            var profile = profile
+            if profile.theme == nil { profile.theme = theme }
+            return profile
+        }
         self.profile = min(max(profile, 0), self.profiles.count - 1)
     }
 
@@ -79,7 +81,6 @@ struct AppConfig: Codable {
         try container.encode(defaultView, forKey: .defaultView)
         try container.encode(terminal, forKey: .terminal)
         try container.encode(appearance, forKey: .appearance)
-        try container.encode(theme, forKey: .theme)
         try container.encode(profiles, forKey: .profiles)
         try container.encode(profile, forKey: .profile)
     }
@@ -88,13 +89,28 @@ struct AppConfig: Codable {
         Visibility(showHidden: showHiddenFiles, showDSStore: showDSStoreFiles)
     }
 
+    var theme: String {
+        themeID(at: profile)
+    }
+
+    func themeID(at index: Int) -> String {
+        profiles.indices.contains(index) ? profiles[index].theme ?? ThemeLibrary.defaultID : ThemeLibrary.defaultID
+    }
+
+    @discardableResult
+    mutating func setTheme(_ id: String, forProfile index: Int) -> Bool {
+        guard profiles.indices.contains(index), profiles[index].theme != id else { return false }
+        profiles[index].theme = id
+        return true
+    }
+
     var sidebar: SidebarTree {
         profiles[profile].tree
     }
 
     @discardableResult
     mutating func addProfile() -> Int {
-        profiles.append(SidebarProfile.make(after: profiles))
+        profiles.append(SidebarProfile.make(after: profiles, theme: theme))
         return profiles.count - 1
     }
 
