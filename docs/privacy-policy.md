@@ -2,7 +2,7 @@
 
 Effective date: 2026-10-30
 
-Cubby is a file manager for macOS developed by Graham Otte. This Privacy Policy explains how Cubby handles information.
+Cubby is a file manager for macOS. This Privacy Policy explains how Cubby handles information.
 
 ## Information collection
 
@@ -32,4 +32,4 @@ This Privacy Policy may be updated from time to time. The updated policy will be
 
 ## Contact
 
-If you have questions about this Privacy Policy, contact: Graham Otte
+If you have questions about this Privacy Policy, open an issue at https://github.com/grahamotte/Cubby/issues.
