@@ -1,7 +1,86 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --color-page: light-dark(#fcfcfb, #1e1f21);
+  --color-sidebar: light-dark(#f1f1ef, #17181a);
+  --color-card: light-dark(#ffffff, #28292b);
+  --color-line: light-dark(rgb(0 0 0 / 0.08), rgb(255 255 255 / 0.08));
+  --color-wash: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.07));
+  --color-ink: light-dark(rgb(0 0 0 / 0.85), rgb(255 255 255 / 0.87));
+  --color-ink-2: light-dark(rgb(0 0 0 / 0.56), rgb(255 255 255 / 0.6));
+  --color-ink-3: light-dark(rgb(0 0 0 / 0.3), rgb(255 255 255 / 0.3));
+  --color-accent: light-dark(#007aff, #0a84ff);
+}
+
 :root {
-  font-family: ui-monospace, monospace;
-  color: #fafafa;
-  background: #0a0a0a;
+  color-scheme: light dark;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+a {
+  text-decoration-color: var(--color-ink-3);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 150ms ease-out, color 150ms ease-out;
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+kbd {
+  display: inline-flex;
+  min-width: 1.75rem;
+  height: 1.625rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.4rem;
+  border: 1px solid var(--color-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--color-card);
+  color: var(--color-ink-2);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.prose-policy h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.prose-policy h2 {
+  padding-top: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.prose-policy p {
+  color: var(--color-ink-2);
+  line-height: 1.65;
+}
+
+.prose-policy code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }

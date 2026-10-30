@@ -87,7 +87,7 @@ Run `mise tasks` to discover available tasks and their descriptions, including d
 
 ### Deployment
 
-This repository is not deployed. Do not run `mise deploy` or the [deploy runbook](runbooks/deploy.md). The `deploy/` tooling is inherited from Code Moto and unused.
+This repository is deployed: `mise deploy` publishes only the Astro website in `website/` to Cloudflare Workers at `cubby.directory`, following the [deploy runbook](runbooks/deploy.md). `config.json` has only `website` subdomains, so there is no droplet; do not add `frontend` or `backend` subdomains, which would make `mise deploy` provision one on DigitalOcean.
 
 ### Cubby
 
