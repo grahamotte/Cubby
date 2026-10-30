@@ -152,7 +152,7 @@ The default "Workbench" theme is a barely warm paper neutral with the macOS acce
 
 ## Layout
 
-The window is a full-height sidebar beside a main pane, with no toolbar and no status bar. The sidebar runs under the traffic lights. The main pane's top bar shares the title bar's height, with the path breadcrumb at the left and three icon buttons (filter, view mode, layout) at the right. Splits (side by side, stacked, three, four) divide the pane area below the top bar; windows have no tabs.
+The window is a full-height sidebar beside a main pane, with no toolbar and no status bar. The sidebar runs under the traffic lights. The main pane's top bar shares the title bar's height, with the path breadcrumb at the left and three icon buttons (filter, view mode, layout) at the right. A small system spinner sits right of the sidebar's settings gear once file operations have run for half a second; moves, copies, and trash show their result in every pane immediately. Splits (side by side, stacked, three, four) divide the pane area below the top bar; windows have no tabs.
 
 Spacing rhythm: a 16 pt gutter aligns the breadcrumb, the list's first disclosure chevron, list column titles with their cell text, and icon view insets. Rows are 28 pt in the list and sidebar, 26 pt in columns. Sidebar items indent 14 pt per level from an 18 pt start. Selection washes inset 6 pt from list edges and 8 pt in the sidebar. Settings is a centered column up to 640 pt wide, cards with 12/16 pt row padding and 28 pt between sections.
 

@@ -54,6 +54,10 @@ final class FileItem {
         fileID = other.fileID
     }
 
+    func placed(in directory: String, name: String? = nil) -> FileItem {
+        FileItem(directory: directory, name: name ?? self.name, isDirectory: isDirectory, isSymlink: isSymlink, isPackage: isPackage, isHidden: isHidden, size: size, modified: modified, created: created, added: added, fileID: fileID)
+    }
+
     func sameEntry(as other: FileItem) -> Bool {
         name == other.name && fileID == other.fileID && modified == other.modified && size == other.size && isDirectory == other.isDirectory && isHidden == other.isHidden
     }

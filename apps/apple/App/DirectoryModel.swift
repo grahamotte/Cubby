@@ -30,22 +30,32 @@ final class DirectoryModel {
     private var loading = false
     private(set) var counter: FolderCounter?
     private var stopped = false
+    private let changes: PendingChanges
+    private var pending: PendingSnapshot
+    private var changesObserver: NSObjectProtocol?
     private static let queue = DispatchQueue(label: "cubby.directory", qos: .userInitiated, attributes: .concurrent)
 
-    init(path: String, view: FolderView, visibility: Visibility) {
+    init(path: String, view: FolderView, visibility: Visibility, changes: PendingChanges? = nil) {
         self.path = path
         sort = view.sort
         ascending = view.ascending
         self.visibility = visibility
+        self.changes = changes ?? .shared
+        pending = self.changes.snapshot
     }
 
     func start() {
+        changesObserver = NotificationCenter.default.addObserver(forName: .pendingChangesChanged, object: changes, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pendingChanged() }
+        }
         load(change: .loaded)
     }
 
     func stop() {
         generation += 1
         stopped = true
+        if let changesObserver { NotificationCenter.default.removeObserver(changesObserver) }
+        changesObserver = nil
         counter = nil
         watcher = nil
         childWatchers = [:]
@@ -63,10 +73,10 @@ final class DirectoryModel {
         let all = allItems
         let expandedItems = Array(expanded.values)
         let counts = countSnapshot(allItems + expandedItems.flatMap { $0.children ?? [] })
-        let sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed
+        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed, pending = pending
         Self.queue.async {
-            let visible = FileSorter.sorted(FileSorter.filtered(all, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts)
-            let children = expandedItems.map { ($0, $0.children.map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts) }) }
+            let visible = FileSorter.sorted(FileSorter.filtered(pending.applied(to: all, in: path), visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts)
+            let children = expandedItems.map { item in (item, item.children.map { FileSorter.sorted(FileSorter.filtered(pending.applied(to: $0, in: item.path), visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts) }) }
             DispatchQueue.main.async {
                 guard token == self.generation else { return }
                 for (item, sorted) in children {
@@ -95,11 +105,11 @@ final class DirectoryModel {
     }
 
     private func loadChildren(of item: FileItem) {
-        let sort = sort, ascending = ascending, visibility = visibility, seed = seed, counts = knownCounts
+        let sort = sort, ascending = ascending, visibility = visibility, seed = seed, counts = knownCounts, pending = pending
         let path = item.path
         Self.queue.async {
             let read = (try? DirectoryReader.read(path)) ?? []
-            let visible = FileSorter.sorted(FileSorter.filtered(read, visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts)
+            let visible = FileSorter.sorted(FileSorter.filtered(pending.applied(to: read, in: path), visibility: visibility, query: ""), by: sort, ascending: ascending, seed: seed, counts: counts)
             DispatchQueue.main.async {
                 guard !self.stopped, self.expanded[path] === item else { return }
                 item.children = DirectoryListing.reconcile(old: item.children ?? [], new: read, visible: visible).visible
@@ -168,7 +178,7 @@ final class DirectoryModel {
     private func load(change: Change) {
         generation += 1
         let token = generation
-        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed, counts = knownCounts
+        let path = path, sort = sort, ascending = ascending, visibility = visibility, query = query, seed = seed, counts = knownCounts, pending = pending
         let started = Date()
         loading = true
         Self.queue.async { [weak self] in
@@ -181,7 +191,7 @@ final class DirectoryModel {
             } catch {
                 result = .failure(DirectoryReader.ReadError(path: path, code: EIO))
             }
-            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered($0, visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts) } ?? []
+            let visible = (try? result.get()).map { FileSorter.sorted(FileSorter.filtered(pending.applied(to: $0, in: path), visibility: visibility, query: query), by: sort, ascending: ascending, seed: seed, counts: counts) } ?? []
             DispatchQueue.main.async {
                 guard let self, token == self.generation, !self.stopped else { return }
                 self.loading = false
@@ -203,7 +213,22 @@ final class DirectoryModel {
                 }
                 self.isLoaded = true
                 self.onChange?(change)
+                if self.pending != pending {
+                    self.applyPresentation()
+                }
             }
+        }
+    }
+
+    private func pendingChanged() {
+        let previous = pending
+        pending = changes.snapshot
+        let changed = ([path] + expanded.keys).map { (previous.changes(in: $0), pending.changes(in: $0)) }.filter { $0 != $1 }
+        guard !changed.isEmpty, !stopped else { return }
+        if changed.allSatisfy({ $0.isSubset(of: $1) }) {
+            if !loading { applyPresentation() }
+        } else {
+            reload()
         }
     }
 }
