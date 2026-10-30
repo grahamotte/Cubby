@@ -1,0 +1,28 @@
+# Cubby
+
+> Cubby is a fast, simple file manager for macOS, built to replace Finder for everyday browsing, organizing, and moving files. It is free and open source (MIT), requires macOS 27 or later, and never writes `.DS_Store` or any other file into the folders you browse.
+
+Install with Homebrew: `brew install grahamotte/tap/cubby`, and update with `brew upgrade`. Or download the latest zip from GitHub Releases, unzip it, and move `Cubby.app` to `/Applications`. Builds are signed with a Developer ID and notarized by Apple. Cubby is not on the App Store.
+
+Features:
+
+- Opens folders with 100,000+ items in a fraction of a second.
+- List (⌘1), icon (⌘2), and column (⌘3) views. The list view has sortable, resizable columns and folders that expand in place. List and icon views show Quick Look thumbnails, and Space opens Quick Look.
+- Splits a window into up to four panes: one, side by side, stacked, three, or four (⌥⌘1 to ⌥⌘5). Each pane browses on its own, and files can be dragged between them. Windows have no tabs.
+- Each folder remembers its view, sort, and icon size, even after it is renamed or moved.
+- A sidebar of folders in nested groups. Drag to add and reorder, and drop files on a sidebar folder to move them (hold ⌥ to copy).
+- Profiles, such as Personal and Work, each with its own sidebar and color theme. Built-in themes: Workbench, Grove, Ocean, Ember, Iris, and Bubblegum, each with light and dark variants.
+- Filter (⌘F), Go to Folder (⇧⌘G), and Finder-style copy, paste, rename, duplicate, compress, and Move to Trash, all undoable with ⌘Z.
+- Settings are plain JSON in `~/.config/cubby` (`config.json`, `themes/`, `folders.json`, `session.json`). Edits to `config.json` apply as soon as the file is saved.
+- No cloud-drive integrations, accounts, analytics, or network requests.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/grahamotte/Cubby/master/README.md): Installation, usage, sidebar, profiles, settings, and config file reference.
+- [Privacy Policy](https://cubby.directory/privacy): Cubby collects no personal information.
+
+## Optional
+
+- [Source code](https://github.com/grahamotte/Cubby): The Cubby repository on GitHub.
+- [Releases](https://github.com/grahamotte/Cubby/releases): Signed and notarized downloads and release notes.
+- [Issues](https://github.com/grahamotte/Cubby/issues): Bug reports and questions.
