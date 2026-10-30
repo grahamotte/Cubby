@@ -22,7 +22,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.7.1",
+    "build": "0.8.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -53,7 +53,7 @@
       },
       "android": {}
     },
-    "version": "0.7.1",
-    "whatsNew": "In icon view, the left and right arrow keys now wrap to the previous or next row and scroll to keep the selection in view."
+    "version": "0.8.0",
+    "whatsNew": "Moves, copies, and trash now show their results in every pane right away, with a small spinner by the settings button while longer file operations run. Theme previews in Settings now show what each theme actually looks like."
   }
 }
