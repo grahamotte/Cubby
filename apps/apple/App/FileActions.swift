@@ -1,24 +1,13 @@
 import AppKit
 
-extension Notification.Name {
-    static let activityChanged = Notification.Name("CubbyActivityChanged")
-}
-
 @MainActor
 enum FileActions {
-    private(set) static var activities: [String] = []
-    private static let queue = DispatchQueue(label: "cubby.file-operations", qos: .userInitiated)
     private static var undoManager: UndoManager { AppState.shared.undoManager }
-
-    static var activityText: String? {
-        guard let first = activities.first else { return nil }
-        return activities.count > 1 ? "\(first) (+\(activities.count - 1) more)" : first
-    }
 
     static func transfer(_ urls: [URL], to directory: URL, copy: Bool, completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
         let title = "\(copy ? "Copying" : "Moving") \(itemCount(urls.count))…"
-        run(title) { operations in
+        run(title, change: copy ? .copy(urls, to: directory) : .move(urls, to: directory)) { operations in
             var applyToAll: ConflictChoice?
             let resolve: (URL) -> ConflictChoice = { destination in
                 if let applyToAll { return applyToAll }
@@ -42,7 +31,7 @@ enum FileActions {
 
     static func trash(_ urls: [URL], undoable: Bool = true) {
         guard !urls.isEmpty else { return }
-        run("Moving \(itemCount(urls.count)) to the Trash…") { $0.trash(urls) } completion: { result in
+        run("Moving \(itemCount(urls.count)) to the Trash…", change: .remove(urls)) { $0.trash(urls) } completion: { result in
             guard undoable, !result.transfers.isEmpty else { return }
             let transfers = result.transfers
             registerUndo("Move to Trash") {
@@ -86,10 +75,10 @@ enum FileActions {
 
     static func newFolder(with urls: [URL], in directory: URL, completion: @escaping (URL) -> Void) {
         guard let folder = try? FileOperations().makeFolder(in: directory, name: "New Folder With Items") else { return }
-        run("Moving \(itemCount(urls.count))…") { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { result in
+        run("Moving \(itemCount(urls.count))…", change: .move(urls, to: folder)) { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { result in
             let transfers = result.transfers
             registerUndo("New Folder With Selection") {
-                run("Moving \(itemCount(transfers.count)) Back…") { operations in
+                run("Moving \(itemCount(transfers.count)) Back…", change: .moveBack(transfers)) { operations in
                     var result = operations.moveBack(transfers)
                     if (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
                         do { try FileManager.default.removeItem(at: folder) } catch { result.errors.append(error) }
@@ -203,13 +192,13 @@ enum FileActions {
         guard !transfers.isEmpty else { return }
         registerUndo(copy ? "Copy" : "Move") {
             if copy {
-                run("Moving \(itemCount(transfers.count)) to the Trash…") { operations in
+                run("Moving \(itemCount(transfers.count)) to the Trash…", change: .remove(transfers.map(\.destination))) { operations in
                     var result = operations.trash(transfers.map(\.destination))
                     result.errors += operations.moveBack(replaced).errors
                     return result
                 } completion: { _ in }
             } else {
-                run("Moving \(itemCount(transfers.count)) Back…") { operations in
+                run("Moving \(itemCount(transfers.count)) Back…", change: .moveBack(transfers)) { operations in
                     var result = operations.moveBack(transfers)
                     result.errors += operations.moveBack(replaced).errors
                     return result
@@ -249,24 +238,17 @@ enum FileActions {
         }
     }
 
-    private static func run(_ title: String, work: @escaping (FileOperations) -> OperationResult, completion: @escaping (OperationResult) -> Void) {
-        activities.append(title)
-        NotificationCenter.default.post(name: .activityChanged, object: nil)
-        queue.async {
-            let result = work(FileOperations())
-            DispatchQueue.main.async {
-                if let index = activities.firstIndex(of: title) { activities.remove(at: index) }
-                NotificationCenter.default.post(name: .activityChanged, object: nil)
-                completion(result)
-                if let summary = result.errorSummary {
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = summary.message
-                    alert.informativeText = summary.details
-                    alert.runModal()
-                } else if let error = result.errors.first {
-                    present(error)
-                }
+    private static func run(_ title: String, change: PendingChange = PendingChange(), work: @escaping (FileOperations) -> OperationResult, completion: @escaping (OperationResult) -> Void) {
+        TaskQueue.shared.enqueue(title, change: change, work: work) { result in
+            completion(result)
+            if let summary = result.errorSummary {
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = summary.message
+                alert.informativeText = summary.details
+                alert.runModal()
+            } else if let error = result.errors.first {
+                present(error)
             }
         }
     }

@@ -70,4 +70,16 @@ final class DirectoryReaderTests: XCTestCase {
         makeFile(directory, "x")
         XCTAssertTrue(try DirectoryReader.read(directory.path, isCancelled: { true }).isEmpty)
     }
+
+    func testReadsOneItem() throws {
+        let directory = makeTemporaryDirectory()
+        let file = makeFile(directory, "a.txt", contents: "1234")
+        let folder = makeFolder(directory, "folder")
+        let item = try XCTUnwrap(DirectoryReader.item(at: file))
+        XCTAssertEqual(item.path, file.path)
+        XCTAssertEqual(item.size, 4)
+        XCTAssertFalse(item.isDirectory)
+        XCTAssertTrue(try XCTUnwrap(DirectoryReader.item(at: folder)).isFolder)
+        XCTAssertNil(DirectoryReader.item(at: directory.appending(path: "missing")))
+    }
 }

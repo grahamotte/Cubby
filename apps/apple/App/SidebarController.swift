@@ -100,6 +100,8 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     private let profileBar = ProfileBar()
     private let emptyLabel = PassthroughLabel(wrappingLabelWithString: "Drag folders here to add them.\nRight-click to add a group.")
     private let settingsButton = SidebarButton("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
+    private let activitySpinner = NSProgressIndicator()
+    private var activityDelay: DispatchWorkItem?
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
     private var currentPath: String?
@@ -139,6 +141,12 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         profileBar.spacing = 2
         profileBar.translatesAutoresizingMaskIntoConstraints = false
 
+        activitySpinner.style = .spinning
+        activitySpinner.controlSize = .small
+        activitySpinner.isDisplayedWhenStopped = false
+        activitySpinner.isHidden = true
+        activitySpinner.translatesAutoresizingMaskIntoConstraints = false
+
         emptyLabel.font = .systemFont(ofSize: 12)
         emptyLabel.textColor = Theme.sidebarSecondaryText
         emptyLabel.isSelectable = false
@@ -149,6 +157,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         root.addSubview(scroll)
         root.addSubview(emptyLabel)
         root.addSubview(settingsButton)
+        root.addSubview(activitySpinner)
         root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
@@ -160,13 +169,36 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             emptyLabel.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -16),
             settingsButton.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 11),
             settingsButton.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
-            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: settingsButton.trailingAnchor, constant: 8),
+            activitySpinner.leadingAnchor.constraint(equalTo: settingsButton.trailingAnchor, constant: 6),
+            activitySpinner.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: activitySpinner.trailingAnchor, constant: 8),
             profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
             profileBar.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
         ])
         view = root
         reload()
         NotificationCenter.default.addObserver(self, selector: #selector(sidebarChanged), name: .sidebarChanged, object: nil)
+    }
+
+    var activity: String? {
+        didSet {
+            activitySpinner.toolTip = activity
+            guard (activity == nil) != (oldValue == nil) else { return }
+            activityDelay?.cancel()
+            activityDelay = nil
+            guard activity != nil else {
+                activitySpinner.isHidden = true
+                activitySpinner.stopAnimation(nil)
+                return
+            }
+            let show = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.activitySpinner.isHidden = false
+                self.activitySpinner.startAnimation(nil)
+            }
+            activityDelay = show
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: show)
+        }
     }
 
     var isSettingsActive: Bool {

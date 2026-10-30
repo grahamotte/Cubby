@@ -154,25 +154,33 @@ enum DirectoryReader {
         }.count
     }
 
+    static func item(at url: URL) -> FileItem? {
+        guard (try? url.checkResourceIsReachable()) == true else { return nil }
+        return item(url, directory: url.deletingLastPathComponent().standardizedFileURL.path)
+    }
+
+    private static let fallbackKeys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey, .isPackageKey, .isHiddenKey, .totalFileSizeKey, .contentModificationDateKey, .creationDateKey, .addedToDirectoryDateKey, .fileResourceIdentifierKey]
+
     private static func fallback(_ directory: String) throws -> [FileItem] {
-        let keys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey, .isPackageKey, .isHiddenKey, .totalFileSizeKey, .contentModificationDateKey, .creationDateKey, .addedToDirectoryDateKey, .fileResourceIdentifierKey]
-        let urls = try FileManager.default.contentsOfDirectory(at: URL(filePath: directory, directoryHint: .isDirectory), includingPropertiesForKeys: keys)
-        return urls.map { url in
-            let values = try? url.resourceValues(forKeys: Set(keys))
-            let isDirectory = values?.isDirectory ?? false
-            return FileItem(
-                directory: directory,
-                name: url.lastPathComponent,
-                isDirectory: isDirectory,
-                isSymlink: values?.isSymbolicLink ?? false,
-                isPackage: values?.isPackage ?? false,
-                isHidden: values?.isHidden ?? url.lastPathComponent.hasPrefix("."),
-                size: isDirectory ? 0 : Int64(values?.totalFileSize ?? 0),
-                modified: values?.contentModificationDate?.timeIntervalSince1970 ?? 0,
-                created: values?.creationDate?.timeIntervalSince1970 ?? 0,
-                added: values?.addedToDirectoryDate?.timeIntervalSince1970 ?? 0,
-                fileID: 0,
-            )
-        }
+        let urls = try FileManager.default.contentsOfDirectory(at: URL(filePath: directory, directoryHint: .isDirectory), includingPropertiesForKeys: fallbackKeys)
+        return urls.map { item($0, directory: directory) }
+    }
+
+    private static func item(_ url: URL, directory: String) -> FileItem {
+        let values = try? url.resourceValues(forKeys: Set(fallbackKeys))
+        let isDirectory = values?.isDirectory ?? false
+        return FileItem(
+            directory: directory,
+            name: url.lastPathComponent,
+            isDirectory: isDirectory,
+            isSymlink: values?.isSymbolicLink ?? false,
+            isPackage: values?.isPackage ?? false,
+            isHidden: values?.isHidden ?? url.lastPathComponent.hasPrefix("."),
+            size: isDirectory ? 0 : Int64(values?.totalFileSize ?? 0),
+            modified: values?.contentModificationDate?.timeIntervalSince1970 ?? 0,
+            created: values?.creationDate?.timeIntervalSince1970 ?? 0,
+            added: values?.addedToDirectoryDate?.timeIntervalSince1970 ?? 0,
+            fileID: 0,
+        )
     }
 }

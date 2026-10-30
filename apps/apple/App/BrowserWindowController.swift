@@ -127,10 +127,10 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
             panesView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             panesView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
-        observers.append(NotificationCenter.default.addObserver(forName: .activityChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.topBar.activity = FileActions.activityText }
+        observers.append(NotificationCenter.default.addObserver(forName: .taskQueueChanged, object: TaskQueue.shared, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.sidebar.activity = TaskQueue.shared.summary }
         })
-        topBar.activity = FileActions.activityText
+        sidebar.activity = TaskQueue.shared.summary
     }
 
     var sidebarWidth: Double {

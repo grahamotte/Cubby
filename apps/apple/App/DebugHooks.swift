@@ -46,6 +46,8 @@ enum DebugHooks {
             if !NSApp.sendAction(Selector(parts[1]), to: nil, from: nil) {
                 _ = controller.window?.firstResponder?.tryToPerform(Selector(parts[1]), with: nil)
             }
+        case "move", "copy":
+            FileActions.transfer(parts.dropFirst(2).map { URL(filePath: $0) }, to: URL(filePath: parts[1], directoryHint: .isDirectory), copy: parts[0] == "copy")
         case "type":
             guard let editor = controller.window?.firstResponder as? NSTextView else { return }
             editor.selectAll(nil)

@@ -39,8 +39,6 @@ final class TopBar: NSView {
     let searchField = ThemedSearchField()
     var onNavigate: ((String) -> Void)?
     private let crumbs = NSStackView()
-    private let activitySpinner = NSProgressIndicator()
-    private let activityLabel = NSTextField(labelWithString: "")
     private lazy var filterButton = PlainButton.make("magnifyingglass", "Filter", target: nil, action: #selector(BrowserWindowController.performFindPanelAction(_:)))
     private lazy var sortButton = PlainButton.make("arrow.up.arrow.down", "Sort", target: self, action: #selector(showSortMenu(_:)))
     private lazy var modeButton = PlainButton.make(ViewMode.list.symbolName, "View", target: self, action: #selector(showModeMenu(_:)))
@@ -58,15 +56,6 @@ final class TopBar: NSView {
         didSet { layoutButton.image = NSImage(systemSymbolName: layout.symbolName, accessibilityDescription: layout.title) }
     }
 
-    var activity: String? {
-        didSet {
-            activityLabel.stringValue = activity ?? ""
-            activityLabel.isHidden = activity == nil
-            activitySpinner.isHidden = activity == nil
-            if activity == nil { activitySpinner.stopAnimation(nil) } else { activitySpinner.startAnimation(nil) }
-        }
-    }
-
     var isFilterVisible: Bool {
         get { !searchField.isHidden }
         set { searchField.isHidden = !newValue }
@@ -79,16 +68,6 @@ final class TopBar: NSView {
         crumbs.setClippingResistancePriority(.defaultLow, for: .horizontal)
         crumbs.translatesAutoresizingMaskIntoConstraints = false
 
-        activitySpinner.style = .spinning
-        activitySpinner.controlSize = .small
-        activitySpinner.isDisplayedWhenStopped = false
-        activitySpinner.isHidden = true
-        activityLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        activityLabel.textColor = Theme.secondaryText
-        activityLabel.lineBreakMode = .byTruncatingTail
-        activityLabel.isHidden = true
-        activityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
         searchField.controlSize = .small
         searchField.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         searchField.placeholderString = "Filter"
@@ -97,10 +76,9 @@ final class TopBar: NSView {
         searchField.isHidden = true
         searchField.widthAnchor.constraint(equalToConstant: 180).isActive = true
 
-        let controls = NSStackView(views: [activitySpinner, activityLabel, searchField, filterButton, sortButton, modeButton, layoutButton])
+        let controls = NSStackView(views: [searchField, filterButton, sortButton, modeButton, layoutButton])
         controls.orientation = .horizontal
         controls.spacing = 2
-        controls.setCustomSpacing(8, after: activityLabel)
         controls.setCustomSpacing(6, after: searchField)
         controls.translatesAutoresizingMaskIntoConstraints = false
         controls.setHuggingPriority(.required, for: .horizontal)
