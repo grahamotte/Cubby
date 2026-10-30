@@ -39,15 +39,11 @@ final class ThemeTile: NSView {
         (isSelected ? Theme.accent : Theme.divider).setStroke()
         path.lineWidth = isSelected ? 2 : 1
         path.stroke()
-        let side: CGFloat = 40
-        let gap: CGFloat = 12
+        let size = NSSize(width: 64, height: 44)
+        let gap: CGFloat = 10
         for (index, palette) in [theme.light, theme.dark].enumerated() {
-            let rect = NSRect(x: (bounds.midX - side - gap / 2 + CGFloat(index) * (side + gap)).rounded(), y: bounds.maxY - 16 - side, width: side, height: side)
-            let orb = NSBezierPath(ovalIn: rect)
-            NSGradient(colors: [Theme.nsColor(palette[.content]), Theme.nsColor(palette[.accent])])?.draw(in: orb, relativeCenterPosition: NSPoint(x: -0.4, y: 0.4))
-            Theme.divider.setStroke()
-            orb.lineWidth = 1
-            orb.stroke()
+            let rect = NSRect(x: (bounds.midX - size.width - gap / 2 + CGFloat(index) * (size.width + gap)).rounded(), y: bounds.maxY - 14 - size.height, width: size.width, height: size.height)
+            ThemePreview.draw(palette, in: rect)
         }
         let name = NSAttributedString(string: theme.name, attributes: [
             .font: NSFont.systemFont(ofSize: 13, weight: .medium),
@@ -71,17 +67,64 @@ final class ThemeSwatch: NSView {
         didSet { needsDisplay = true }
     }
 
-    override var intrinsicContentSize: NSSize { NSSize(width: 30, height: 14) }
+    override var intrinsicContentSize: NSSize { NSSize(width: 46, height: 16) }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let theme else { return }
         for (index, palette) in [theme.light, theme.dark].enumerated() {
-            let orb = NSBezierPath(ovalIn: NSRect(x: 1 + CGFloat(index) * 15, y: 1, width: 12, height: 12))
-            NSGradient(colors: [Theme.nsColor(palette[.content]), Theme.nsColor(palette[.accent])])?.draw(in: orb, relativeCenterPosition: NSPoint(x: -0.4, y: 0.4))
-            Theme.divider.setStroke()
-            orb.lineWidth = 1
-            orb.stroke()
+            ThemePreview.draw(palette, in: NSRect(x: CGFloat(index) * 24, y: 0, width: 22, height: 16))
         }
+    }
+}
+
+enum ThemePreview {
+    static func draw(_ palette: ThemePalette, in rect: NSRect) {
+        let radius = min(6, rect.height / 5)
+        let frame = NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: radius, yRadius: radius)
+        let accent = Theme.nsColor(palette[.accent])
+        NSGraphicsContext.saveGraphicsState()
+        frame.addClip()
+        Theme.nsColor(palette[.content]).setFill()
+        rect.fill()
+        let sidebar = NSRect(x: rect.minX, y: rect.minY, width: (rect.width * 0.32).rounded(), height: rect.height)
+        Theme.nsColor(palette[.sidebar]).setFill()
+        sidebar.fill()
+        Theme.nsColor(palette[.divider]).setFill()
+        NSRect(x: sidebar.maxX, y: rect.minY, width: 1, height: rect.height).fill()
+        let detailed = rect.height >= 30
+        let rows = detailed ? 4 : 2
+        let rowHeight = (rect.height - 4) / CGFloat(rows + 1)
+        let bar = max(1, (rowHeight * 0.36).rounded())
+        let content = NSRect(x: sidebar.maxX + 1, y: rect.minY, width: rect.maxX - sidebar.maxX - 1, height: rect.height)
+        for row in 0..<rows {
+            let top = rect.maxY - rowHeight * (CGFloat(row) + 0.75)
+            let midY = top - rowHeight / 2
+            if detailed {
+                Theme.nsColor(palette[row == 0 ? .sidebarSecondaryText : .sidebarText]).withAlphaComponent(row == 0 ? 0.6 : 0.45).setFill()
+                pill(NSRect(x: sidebar.minX + 5, y: midY - bar / 2, width: sidebar.width * (row == 0 ? 0.4 : 0.6), height: bar))
+            }
+            let selected = row == 1
+            if selected {
+                accent.withAlphaComponent(0.2).setFill()
+                let inset: CGFloat = detailed ? 3 : 2
+                NSBezierPath(roundedRect: NSRect(x: content.minX + inset, y: top - rowHeight, width: content.width - inset * 2, height: rowHeight), xRadius: 2, yRadius: 2).fill()
+            }
+            let x = content.minX + (detailed ? 7 : 3)
+            let icon = bar * (detailed ? 1.4 : 1.5)
+            accent.setFill()
+            pill(NSRect(x: x, y: midY - bar / 2, width: icon, height: bar))
+            Theme.nsColor(palette[.text]).withAlphaComponent(selected ? 0.75 : 0.35).setFill()
+            let label = x + icon + (detailed ? 3 : 1.5)
+            pill(NSRect(x: label, y: midY - bar / 2, width: min(content.width * (row % 2 == 0 ? 0.42 : 0.55), content.maxX - label - 4), height: bar))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+        Theme.divider.setStroke()
+        frame.lineWidth = 1
+        frame.stroke()
+    }
+
+    private static func pill(_ rect: NSRect) {
+        NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
     }
 }
 
