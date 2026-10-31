@@ -1,6 +1,7 @@
 #if APP_DEV && os(macOS)
 import AppKit
 
+@MainActor
 enum CubbyDebugCommands {
     static func run(_ name: String, _ arguments: [String]) throws {
         guard let controller = NSApp.orderedWindows.compactMap({ $0.windowController as? BrowserWindowController }).first else { throw DebugHooks.Failure("no browser window") }
