@@ -6,6 +6,8 @@
 
 Cubby is a fast, simple file manager for macOS, built to replace Finder for everyday browsing, organizing, and moving files. It opens folders with 100,000+ items in a fraction of a second, splits a window into up to four panes, and never writes `.DS_Store` or any other file into the folders you browse.
 
+Learn more at [cubby.directory](https://cubby.directory).
+
 ## Install
 
 ```sh
