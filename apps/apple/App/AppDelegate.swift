@@ -19,8 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
         NSApp.mainMenu = MainMenu.build()
-        #if CUBBY_DEV
-        DebugHooks.install()
+        #if APP_DEV
+        DebugHooks.install(custom: CubbyDebugCommands.run)
         #endif
         UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
         let state = AppState.shared

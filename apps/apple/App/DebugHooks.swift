@@ -1,84 +1,88 @@
-#if CUBBY_DEV
+#if APP_DEV && os(macOS)
 import AppKit
 
-@MainActor
 enum DebugHooks {
-    static func install() {
-        DistributedNotificationCenter.default().addObserver(forName: Notification.Name("cubby.debug"), object: nil, queue: .main) { note in
-            let command = note.object as? String ?? ""
-            MainActor.assumeIsolated { run(command) }
+    struct Failure: LocalizedError {
+        let errorDescription: String?
+
+        init(_ message: String) {
+            errorDescription = message
         }
     }
 
-    static func run(_ command: String) {
-        let parts = command.components(separatedBy: "|")
-        guard let controller = NSApp.orderedWindows.compactMap({ $0.windowController as? BrowserWindowController }).first else { return }
-        switch parts[0] {
-        case "snap":
-            let target = parts.count > 2 ? NSApp.windows.first { $0.title == parts[2] } : controller.window
-            guard let window = target, let view = window.contentView?.superview else { return }
-            let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
-            view.cacheDisplay(in: view.bounds, to: rep)
-            try? rep.representation(using: .png, properties: [:])?.write(to: URL(filePath: parts[1]))
-        case "go":
-            controller.activePane.navigate(to: parts[1])
-        case "mode":
-            controller.activePane.setMode(ViewMode(rawValue: parts[1]) ?? .list)
-        case "layout":
-            controller.setLayout(PaneLayout(rawValue: parts[1]) ?? .single)
-        case "select":
-            controller.activePane.navigate(to: (parts[1] as NSString).deletingLastPathComponent, select: Set(parts.dropFirst().map { ($0 as NSString).lastPathComponent }))
-        case "frame":
-            controller.window?.setFrame(NSRect(x: 100, y: 100, width: Double(parts[1]) ?? 1100, height: Double(parts[2]) ?? 700), display: true)
-        case "time":
-            let start = Date()
-            controller.activePane.navigate(to: parts[1])
-            let pane = controller.activePane
-            func check() {
-                if pane.model.isLoaded {
-                    try? "\(Date().timeIntervalSince(start)) \(pane.model.items.count)".write(toFile: parts[2], atomically: true, encoding: .utf8)
-                } else {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: check)
+    static func install(custom: @escaping @MainActor (String, [String]) throws -> Void = { name, _ in throw Failure("unknown command \(name)") }) {
+        let name = Notification.Name("\(Bundle.main.bundleIdentifier ?? "app").debug")
+        DistributedNotificationCenter.default().addObserver(forName: name, object: nil, queue: .main) { note in
+            guard let object = (note.object as? String)?.data(using: .utf8),
+                  let request = try? JSONDecoder().decode(DebugRequest.self, from: object) else { return }
+            MainActor.assumeIsolated {
+                var error: String?
+                do {
+                    try run(request.command, custom: custom)
+                } catch let failure {
+                    error = failure.localizedDescription
                 }
+                reply(DebugReply(id: request.id, error: error), to: name)
             }
-            check()
-        case "action":
-            if !NSApp.sendAction(Selector(parts[1]), to: nil, from: nil) {
-                _ = controller.window?.firstResponder?.tryToPerform(Selector(parts[1]), with: nil)
+        }
+    }
+
+    static func run(_ command: String, custom: (String, [String]) throws -> Void) throws {
+        guard let command = DebugCommand(command) else { throw Failure("invalid command \(command)") }
+        switch command {
+        case .snap(let path, let title):
+            guard let view = try window(titled: title).contentView?.superview,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw Failure("cannot capture window") }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            guard let png = rep.representation(using: .png, properties: [:]) else { throw Failure("cannot encode PNG") }
+            try png.write(to: URL(filePath: path))
+        case .frame(let width, let height):
+            let window = try window(titled: nil)
+            let frame = window.frame
+            window.setFrame(NSRect(x: frame.minX, y: frame.maxY - height, width: width, height: height), display: true)
+        case .action(let name):
+            if !NSApp.sendAction(Selector(name), to: nil, from: nil),
+               try window(titled: nil).firstResponder?.tryToPerform(Selector(name), with: nil) != true {
+                throw Failure("no responder handled \(name)")
             }
-        case "move", "copy":
-            FileActions.transfer(parts.dropFirst(2).map { URL(filePath: $0) }, to: URL(filePath: parts[1], directoryHint: .isDirectory), copy: parts[0] == "copy")
-        case "type":
-            guard let editor = controller.window?.firstResponder as? NSTextView else { return }
-            editor.selectAll(nil)
-            editor.insertText(parts[1], replacementRange: editor.selectedRange())
-            editor.insertNewline(nil)
-        case "sidebar":
-            _ = controller.sidebar.tryToPerform(Selector(parts[1]), with: nil)
-        case "key":
-            guard let window = controller.window, let code = UInt16(parts[1]) else { return }
-            let modifiers = parts.count > 2 ? parts[2] : ""
-            var flags: NSEvent.ModifierFlags = []
-            if modifiers.contains("c") { flags.insert(.command) }
-            if modifiers.contains("s") { flags.insert(.shift) }
-            if modifiers.contains("o") { flags.insert(.option) }
-            if modifiers.contains("t") { flags.insert(.control) }
-            let arrows: [UInt16: Int] = [126: NSUpArrowFunctionKey, 125: NSDownArrowFunctionKey, 123: NSLeftArrowFunctionKey, 124: NSRightArrowFunctionKey]
-            if arrows[code] != nil { flags.formUnion([.function, .numericPad]) }
-            let characters = arrows[code].flatMap { UnicodeScalar($0) }.map { String(Character($0)) } ?? (parts.count > 3 ? parts[3] : "")
-            window.makeKeyAndOrderFront(nil)
+        case .key(let code, let modifiers, let characters):
+            let window = try window(titled: nil)
+            let flags = modifiers.reduce(into: NSEvent.ModifierFlags()) { $0.insert(flag(for: $1)) }
             for type in [NSEvent.EventType.keyDown, .keyUp] {
-                guard let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code) else { continue }
-                NSApp.postEvent(event, atStart: false)
+                guard let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code) else { throw Failure("cannot create key event") }
+                if type == .keyDown, NSApp.mainMenu?.performKeyEquivalent(with: event) == true || window.performKeyEquivalent(with: event) { continue }
+                window.sendEvent(event)
             }
-        case "profile":
-            AppState.shared.selectProfile(Int(parts[1]) ?? 0)
-        case "undo":
-            AppState.shared.undoManager.undo()
-        case "focus":
-            controller.activePane.activate()
-        default:
-            break
+        case .type(let text):
+            guard let client = try window(titled: nil).firstResponder as? NSTextInputClient else { throw Failure("first responder does not accept text") }
+            client.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
+        case .custom(let name, let arguments):
+            try custom(name, arguments)
+        }
+    }
+
+    private static func reply(_ reply: DebugReply, to name: Notification.Name) {
+        guard let data = try? JSONEncoder().encode(reply) else { return }
+        DistributedNotificationCenter.default().postNotificationName(Notification.Name("\(name.rawValue).reply"), object: String(decoding: data, as: UTF8.self), userInfo: nil, deliverImmediately: true)
+    }
+
+    private static func window(titled title: String?) throws -> NSWindow {
+        if let title {
+            guard let window = NSApp.windows.first(where: { $0.title == title }) else { throw Failure("no window titled \(title)") }
+            return window
+        }
+        guard let window = NSApp.mainWindow ?? NSApp.orderedWindows.first(where: { $0.isVisible && $0.canBecomeMain }) else { throw Failure("no main window") }
+        return window
+    }
+
+    private static func flag(for modifier: DebugCommand.Modifier) -> NSEvent.ModifierFlags {
+        switch modifier {
+        case .command: .command
+        case .shift: .shift
+        case .option: .option
+        case .control: .control
+        case .function: .function
+        case .numericPad: .numericPad
         }
     }
 }
