@@ -4,10 +4,16 @@ import XCTest
 final class SessionStateTests: XCTestCase {
     func testRoundTrips() throws {
         let url = makeTemporaryDirectory().appending(path: "session.json")
-        let state = SessionState(windows: [.init(frame: "0 0 800 600", sidebarWidth: 200, tabs: [.init(layout: .sideBySide, paths: ["/a", "/b"], activePane: 1), nil, .init(layout: .single, paths: ["/c"], activePane: 0)])], listColumns: [.init(id: "size", width: 80, hidden: true)])
+        let state = SessionState(windows: [.init(frame: "0 0 800 600", sidebarWidth: 200, tabs: [.init(layout: .sideBySide, paths: ["/a", "/b"], activePane: 1), nil, .init(layout: .single, paths: ["/c"], activePane: 0)])], listColumns: [.init(id: "size", width: 80, hidden: true)], lastFrame: "10 20 900 700")
         try state.save(to: url)
         XCTAssertEqual(SessionState.load(from: url), state)
         XCTAssertNil(SessionState.load(from: url.appending(path: "missing")))
+    }
+
+    func testDecodesSessionWithoutLastFrame() throws {
+        let state = try JSONDecoder().decode(SessionState.self, from: Data(#"{"windows":[]}"#.utf8))
+        XCTAssertEqual(state.windows, [])
+        XCTAssertNil(state.lastFrame)
     }
 
     func testNormalizesTabs() {

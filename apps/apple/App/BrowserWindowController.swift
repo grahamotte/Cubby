@@ -419,6 +419,14 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate, NSSea
         updateActive()
     }
 
+    func windowDidEndLiveResize(_ notification: Notification) {
+        AppDelegate.shared?.saveSessionSoon()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        AppDelegate.shared?.saveSessionSoon()
+    }
+
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
         window.firstResponder is NSTextView ? textUndoManager : AppState.shared.undoManager
     }
