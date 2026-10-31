@@ -198,7 +198,9 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         updateSortIndicator()
         guard updateRowHeight() else { return }
         let visible = outlineView.rows(in: outlineView.visibleRect)
-        outlineView.reloadData(forRowIndexes: IndexSet(integersIn: 0..<outlineView.numberOfRows), columnIndexes: IndexSet(integersIn: 0..<outlineView.numberOfColumns))
+        let selected = Set(selectedItems.map(\.path))
+        outlineView.reloadData()
+        restoreSelection(selected)
         if visible.length > 0 { outlineView.scrollRowToVisible(visible.location) }
     }
 
