@@ -43,6 +43,7 @@ struct SessionState: Codable, Equatable {
 
     var windows: [Window]
     var listColumns: [Column]?
+    var lastFrame: String?
 
     static func load(from url: URL) -> SessionState? {
         guard let data = try? Data(contentsOf: url) else { return nil }

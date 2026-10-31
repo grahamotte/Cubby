@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var sessionWorkItem: DispatchWorkItem?
     private var launched = false
     private var pendingPaths: [String] = []
+    private var lastFrame: String?
 
     override init() {
         super.init()
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         Theme.apply(state.theme, scheme: state.colorScheme)
         if let session = SessionState.load(from: state.paths.sessionFile) {
             state.listColumns = session.listColumns ?? []
+            lastFrame = session.lastFrame
             restore(session)
         }
         launched = true
@@ -93,6 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         if let referenceWindow = reference?.window, let window = controller.window {
             window.setFrame(referenceWindow.frame, display: false)
             window.setFrameTopLeftPoint(window.cascadeTopLeft(from: NSPoint(x: referenceWindow.frame.minX, y: referenceWindow.frame.maxY)))
+        } else if let lastFrame, let window = controller.window {
+            window.setFrame(from: lastFrame)
         } else {
             controller.window?.center()
         }
@@ -103,6 +107,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func windowClosed(_ controller: BrowserWindowController) {
+        if let window = controller.window {
+            lastFrame = window.frameDescriptor
+        }
         controllers.removeAll { $0 === controller }
         saveSessionSoon()
     }
@@ -121,7 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let windows = all.compactMap { controller in
             controller.window.map { SessionState.Window(frame: $0.frameDescriptor, sidebarWidth: controller.sidebarWidth, tabs: controller.profileTabs.saving(controller.tabState)) }
         }
-        let state = SessionState(windows: windows, listColumns: AppState.shared.listColumns.isEmpty ? nil : AppState.shared.listColumns)
+        if let frame = windows.first?.frame {
+            lastFrame = frame
+        }
+        let state = SessionState(windows: windows, listColumns: AppState.shared.listColumns.isEmpty ? nil : AppState.shared.listColumns, lastFrame: lastFrame)
         try? state.save(to: AppState.shared.paths.sessionFile)
     }
 
