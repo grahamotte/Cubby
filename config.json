@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.9.0",
+    "build": "0.10.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.9.0",
-    "whatsNew": "A new history button in the sidebar shows recent file operations. Dragging files now animates the move, and list folders no longer expand mid-drag. New windows open at the size of the last one, long paths in the top bar truncate in the middle instead of overlapping its buttons, and list rows stay aligned when the icon size changes."
+    "version": "0.10.0",
+    "whatsNew": "Undo file operations with ⌘Z or from the history popover. Renaming several selected items opens a bulk rename sheet with find and replace, prefixes and suffixes, numbering, and case changes, previewing every new name. A renamed item stays selected inside expanded folders and deeper columns, and list view padding and disclosure chevrons are evened out."
   }
 }
