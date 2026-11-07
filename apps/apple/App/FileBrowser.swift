@@ -15,6 +15,7 @@ protocol FileBrowserHost: AnyObject {
     func setIconSize(_ size: Int)
     func setListIconSize(_ size: Int)
     func browseDirectoryChanged()
+    func browserDidReload(_ folder: String)
     func focusNextPane()
     func scrollAnchor(for path: String) -> ScrollAnchor?
     func saveScroll(_ anchor: ScrollAnchor?, for path: String)

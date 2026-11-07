@@ -255,6 +255,7 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
                     }
                 }
                 self.restore(selected, in: column)
+                self.host?.browserDidReload(column.path)
             }
             model.start()
         }
