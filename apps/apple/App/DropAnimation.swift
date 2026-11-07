@@ -18,8 +18,9 @@ final class DropAnimation: NSObject {
 
     private static var source: Source?
     private static var running: [DropAnimation] = []
-    private static let flight: CFTimeInterval = 0.25
-    private static let pulseDuration: CFTimeInterval = 0.3
+    private static let flight: CFTimeInterval = 0.4
+    private static let pulseDuration: CFTimeInterval = 0.5
+    private static let minimumSize: CGFloat = 40
     private static let limit = 12
 
     private let overlay: NSWindow
@@ -77,19 +78,25 @@ final class DropAnimation: NSObject {
         origin = frame.origin
         self.locate = locate
         destination = drop
-        pulseDelay = icons.isEmpty ? 0 : Self.flight * 0.6
+        pulseDelay = icons.isEmpty ? 0 : Self.flight * 0.7
         let content = NSView(frame: NSRect(origin: .zero, size: frame.size))
         content.wantsLayer = true
         let root = content.layer ?? CALayer()
         let scale = parent.backingScaleFactor
         parent.effectiveAppearance.performAsCurrentDrawingAppearance { [pulse] in
-            pulse.backgroundColor = Theme.selection.cgColor
+            pulse.backgroundColor = Theme.accent.withAlphaComponent(0.3).cgColor
+            pulse.borderColor = Theme.accent.cgColor
         }
+        pulse.borderWidth = 2
         pulse.opacity = 0
         root.addSublayer(pulse)
         flyers = icons.map { image, rect in
             let layer = CALayer()
-            layer.frame = rect.offsetBy(dx: -frame.minX, dy: -frame.minY)
+            let grow = max(Self.minimumSize - min(rect.width, rect.height), 0) / 2
+            layer.frame = rect.insetBy(dx: -grow, dy: -grow).offsetBy(dx: -frame.minX, dy: -frame.minY)
+            layer.shadowOpacity = 0.35
+            layer.shadowRadius = 6
+            layer.shadowOffset = CGSize(width: 0, height: -3)
             layer.contents = image.layerContents(forContentsScale: scale)
             layer.contentsScale = scale
             layer.contentsGravity = .resizeAspect
@@ -137,8 +144,9 @@ final class DropAnimation: NSObject {
         CATransaction.setDisableActions(true)
         for flyer in flyers {
             flyer.layer.position = NSPoint(x: flyer.from.x + (to.x - flyer.from.x) * eased, y: flyer.from.y + (to.y - flyer.from.y) * eased)
-            flyer.layer.setAffineTransform(CGAffineTransform(scaleX: 1 - 0.6 * eased, y: 1 - 0.6 * eased))
-            flyer.layer.opacity = Float(progress < 0.6 ? 1 : (1 - progress) / 0.4)
+            let scale = 1 + 0.15 * sin(min(progress / 0.3, 1) * .pi / 2) - 0.75 * eased
+            flyer.layer.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale))
+            flyer.layer.opacity = Float(progress < 0.8 ? 1 : (1 - progress) / 0.2)
         }
         if let pulseRect {
             pulse.frame = pulseRect.offsetBy(dx: -origin.x, dy: -origin.y)

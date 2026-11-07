@@ -4,6 +4,7 @@ final class FileOutlineView: NSOutlineView {
     weak var browser: ListBrowser?
 
     override func keyDown(with event: NSEvent) {
+        browser?.restoreDragExpansion(ending: true)
         if browser?.handleKey(event) == true { return }
         super.keyDown(with: event)
     }
@@ -24,6 +25,7 @@ final class FileOutlineView: NSOutlineView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        browser?.restoreDragExpansion(ending: true)
         browser?.host?.browserDidBecomeActive()
         super.mouseDown(with: event)
     }
@@ -40,6 +42,11 @@ final class FileOutlineView: NSOutlineView {
 
     override func draggingEnded(_ sender: NSDraggingInfo) {
         super.draggingEnded(sender)
+        browser?.restoreDragExpansion(ending: true)
+    }
+
+    override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        super.concludeDragOperation(sender)
         browser?.restoreDragExpansion(ending: true)
     }
 
@@ -414,6 +421,10 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         (item as? FileItem)?.isFolder ?? false
     }
 
+    func outlineView(_ outlineView: NSOutlineView, shouldExpandItem item: Any) -> Bool {
+        !dragging
+    }
+
     func outlineViewItemWillExpand(_ notification: Notification) {
         guard let item = notification.userInfo?["NSObject"] as? FileItem else { return }
         if dragging { dragExpanded.append(item) }
@@ -499,6 +510,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     }
 
     func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        dragging = true
         if let folder = item as? FileItem, folder.isFolder {
             outlineView.setDropItem(folder, dropChildIndex: NSOutlineViewDropOnItemIndex)
             return DragSupport.operation(for: info, to: folder.url)
