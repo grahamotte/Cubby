@@ -401,6 +401,12 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         browser?.viewDidChange()
     }
 
+    func setListColumns(_ columns: [FolderView.Column]?) {
+        guard columns != folderView.columns else { return }
+        folderView.columns = columns
+        AppState.shared.setView(folderView, for: model.path)
+    }
+
     func drop(_ urls: [URL], into directory: URL, operation: NSDragOperation) -> Bool {
         let copy = operation == .copy
         let reveals = directory.standardizedFileURL.path == model.path

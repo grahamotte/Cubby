@@ -24,19 +24,22 @@ struct SidebarProfile: Codable {
         "moon",
     ]
 
+    var id: String
     var name: String
     var icon: String
     var theme: String?
     let tree: SidebarTree
 
     private enum CodingKeys: String, CodingKey {
+        case id
         case name
         case icon
         case theme
         case sidebar
     }
 
-    init(name: String, icon: String, theme: String? = nil, sidebar: [SidebarNode] = []) {
+    init(id: String = UUID().uuidString, name: String, icon: String, theme: String? = nil, sidebar: [SidebarNode] = []) {
+        self.id = id
         self.name = name
         self.icon = icon
         self.theme = theme
@@ -45,6 +48,7 @@ struct SidebarProfile: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? "Profile"
         icon = try container.decodeIfPresent(String.self, forKey: .icon) ?? SidebarProfile.icons[0]
         theme = try container.decodeIfPresent(String.self, forKey: .theme)
@@ -53,6 +57,7 @@ struct SidebarProfile: Codable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
         try container.encode(icon, forKey: .icon)
         try container.encodeIfPresent(theme, forKey: .theme)

@@ -185,4 +185,36 @@ final class AppConfigTests: XCTestCase {
         XCTAssertEqual(config.profiles[1].tree.nodes[0].children[0].path, "/new")
         XCTAssertFalse(config.updateFolders(movedFrom: "/missing", to: "/else"))
     }
+
+    func testAssignsMissingAndDuplicateProfileIDs() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"profiles":[{"id":"a","name":"A","icon":"star"},{"id":"a","name":"Copy","icon":"star"},{"name":"B","icon":"moon"}],"profile":1}"#.utf8))
+        XCTAssertTrue(config.assignedProfileIDs)
+        XCTAssertEqual(config.profiles[0].id, "a")
+        XCTAssertEqual(Set(config.profiles.map(\.id)).count, 3)
+        XCTAssertFalse(config.profiles.contains { $0.id.isEmpty })
+        XCTAssertEqual(config.profileID, config.profiles[1].id)
+        XCTAssertEqual(config.profileID(at: 2), config.profiles[2].id)
+        XCTAssertNil(config.profileID(at: 3))
+        let reloaded = try JSONDecoder().decode(AppConfig.self, from: JSONStore.encode(config))
+        XCTAssertFalse(reloaded.assignedProfileIDs)
+        XCTAssertEqual(reloaded.profiles.map(\.id), config.profiles.map(\.id))
+        XCTAssertFalse(AppConfig.standard.assignedProfileIDs)
+    }
+
+    func testProfileIDsSurviveEditsAndRemoval() {
+        var config = AppConfig.standard
+        config.addProfile()
+        config.addProfile()
+        let ids = config.profiles.map(\.id)
+        XCTAssertEqual(Set(ids).count, 3)
+        config.renameProfile(at: 1, to: "Work")
+        config.setProfileIcon(at: 1, to: "moon")
+        XCTAssertTrue(config.removeProfile(at: 0))
+        XCTAssertEqual(config.profiles.map(\.id), Array(ids[1...]))
+    }
+
+    func testDefaultViewDropsColumns() throws {
+        let config = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"defaultView":{"mode":"list","columns":[{"id":"name","width":200,"hidden":false}]}}"#.utf8))
+        XCTAssertNil(config.defaultView.columns)
+    }
 }

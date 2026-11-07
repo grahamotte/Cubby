@@ -26,7 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let state = AppState.shared
         Theme.apply(state.theme, scheme: state.colorScheme)
         if let session = SessionState.load(from: state.paths.sessionFile) {
-            state.listColumns = session.listColumns ?? []
             lastFrame = session.lastFrame
             restore(session)
         }
@@ -131,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         if let frame = windows.first?.frame {
             lastFrame = frame
         }
-        let state = SessionState(windows: windows, listColumns: AppState.shared.listColumns.isEmpty ? nil : AppState.shared.listColumns, lastFrame: lastFrame)
+        let state = SessionState(windows: windows, lastFrame: lastFrame)
         try? state.save(to: AppState.shared.paths.sessionFile)
     }
 

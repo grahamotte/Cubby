@@ -22,7 +22,11 @@ final class ConfigStore {
             return .created(config)
         }
         do {
-            return .loaded(try JSONDecoder().decode(AppConfig.self, from: data))
+            let config = try JSONDecoder().decode(AppConfig.self, from: data)
+            if config.assignedProfileIDs {
+                try? save(config)
+            }
+            return .loaded(config)
         } catch {
             return .invalid(.standard, ConfigStore.describe(error))
         }

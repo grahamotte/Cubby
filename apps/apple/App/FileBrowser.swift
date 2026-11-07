@@ -15,6 +15,7 @@ protocol FileBrowserHost: AnyObject {
     func setSort(_ key: SortKey, ascending: Bool)
     func setIconSize(_ size: Int)
     func setListIconSize(_ size: Int)
+    func setListColumns(_ columns: [FolderView.Column]?)
     func browseDirectoryChanged()
     func browserDidReload(_ folder: String)
     func focusNextPane()

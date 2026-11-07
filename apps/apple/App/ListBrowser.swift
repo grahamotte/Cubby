@@ -102,6 +102,8 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         Column(id: "kind", title: "Kind", sort: .kind, width: 130, alignment: .left, hiddenByDefault: false),
     ]
 
+    static let defaultLayout = columns.map { FolderView.Column(id: $0.id, width: Double($0.width), hidden: $0.hiddenByDefault) }
+
     static let nameFont = NSFont.systemFont(ofSize: 13)
 
     weak var host: FileBrowserHost?
@@ -169,7 +171,6 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         scrollView.drawsBackground = false
         view = scrollView
 
-        NotificationCenter.default.addObserver(self, selector: #selector(columnsChanged), name: .listColumnsChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSTableView.columnDidResizeNotification, object: outlineView)
         NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSTableView.columnDidMoveNotification, object: outlineView)
     }
@@ -185,6 +186,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
             outlineView.reloadItem(item, reloadChildren: true)
             restoreSelection(selected)
         case .loaded:
+            applyColumnState()
             items = host?.model.items ?? []
             _ = updateRowHeight()
             updateCounter()
@@ -339,24 +341,19 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     private func applyColumnState() {
         applyingColumns = true
-        let saved = AppState.shared.listColumns
-        if !saved.isEmpty {
-            var position = 0
-            var seen = Set<String>()
-            for state in saved where seen.insert(state.id).inserted {
-                let current = outlineView.column(withIdentifier: NSUserInterfaceItemIdentifier(state.id))
-                guard current >= 0, let column = outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier(state.id)) else { continue }
-                if current != position {
-                    outlineView.moveColumn(current, toColumn: position)
-                }
-                position += 1
-                column.width = max(state.width, column.minWidth)
-                column.isHidden = state.id != "name" && state.hidden
+        let saved = host?.folderView.columns ?? ListBrowser.defaultLayout
+        let layout = saved + ListBrowser.defaultLayout.filter { spec in !saved.contains { $0.id == spec.id } }
+        var position = 0
+        var seen = Set<String>()
+        for state in layout where seen.insert(state.id).inserted {
+            let current = outlineView.column(withIdentifier: NSUserInterfaceItemIdentifier(state.id))
+            guard current >= 0, let column = outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier(state.id)) else { continue }
+            if current != position {
+                outlineView.moveColumn(current, toColumn: position)
             }
-        } else {
-            for spec in ListBrowser.columns {
-                outlineView.tableColumn(withIdentifier: NSUserInterfaceItemIdentifier(spec.id))?.isHidden = spec.hiddenByDefault
-            }
+            position += 1
+            column.width = max(state.width, column.minWidth)
+            column.isHidden = state.id != "name" && state.hidden
         }
         for item in outlineView.headerView?.menu?.items ?? [] {
             let id = item.representedObject as? String ?? ""
@@ -390,10 +387,10 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     }
 
     private func saveColumnState() {
-        AppState.shared.listColumns = outlineView.tableColumns.map {
-            SessionState.Column(id: $0.identifier.rawValue, width: $0.width, hidden: $0.isHidden)
+        let columns = outlineView.tableColumns.map {
+            FolderView.Column(id: $0.identifier.rawValue, width: $0.width, hidden: $0.isHidden)
         }
-        NotificationCenter.default.post(name: .listColumnsChanged, object: self)
+        host?.setListColumns(columns == ListBrowser.defaultLayout ? nil : columns)
     }
 
     @objc private func toggleColumn(_ sender: NSMenuItem) {
@@ -403,11 +400,6 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         saveColumnState()
         updateCounter()
         reloadCounts()
-    }
-
-    @objc private func columnsChanged(_ notification: Notification) {
-        guard notification.object as? ListBrowser !== self else { return }
-        applyColumnState()
     }
 
     @objc private func columnGeometryChanged(_ notification: Notification) {

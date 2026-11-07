@@ -8,6 +8,7 @@ struct AppConfig: Codable {
     var appearance: ColorScheme
     private(set) var profiles: [SidebarProfile]
     private(set) var profile: Int
+    private(set) var assignedProfileIDs = false
 
     private enum CodingKeys: String, CodingKey {
         case showHiddenFiles
@@ -46,13 +47,22 @@ struct AppConfig: Codable {
         self.showHiddenFiles = showHiddenFiles
         self.showDSStoreFiles = showDSStoreFiles
         self.defaultView = defaultView
+        self.defaultView.columns = nil
         self.terminal = terminal
         self.appearance = appearance
+        var ids = Set<String>()
+        var assigned = false
         self.profiles = (profiles.isEmpty ? [SidebarProfile.personal([])] : profiles).map { profile in
             var profile = profile
             if profile.theme == nil { profile.theme = theme }
+            if profile.id.isEmpty || ids.contains(profile.id) {
+                profile.id = UUID().uuidString
+                assigned = true
+            }
+            ids.insert(profile.id)
             return profile
         }
+        assignedProfileIDs = assigned
         self.profile = min(max(profile, 0), self.profiles.count - 1)
     }
 
@@ -106,6 +116,14 @@ struct AppConfig: Codable {
 
     var sidebar: SidebarTree {
         profiles[profile].tree
+    }
+
+    var profileID: String {
+        profiles[profile].id
+    }
+
+    func profileID(at index: Int) -> String? {
+        profiles.indices.contains(index) ? profiles[index].id : nil
     }
 
     @discardableResult

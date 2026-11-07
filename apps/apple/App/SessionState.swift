@@ -35,14 +35,7 @@ struct SessionState: Codable, Equatable {
         var tabs: [Tab?]
     }
 
-    struct Column: Codable, Equatable {
-        var id: String
-        var width: Double
-        var hidden: Bool
-    }
-
     var windows: [Window]
-    var listColumns: [Column]?
     var lastFrame: String?
 
     static func load(from url: URL) -> SessionState? {

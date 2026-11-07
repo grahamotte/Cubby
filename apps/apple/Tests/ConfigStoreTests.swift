@@ -38,6 +38,17 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: store.paths.configFile, encoding: .utf8), #"{"sidebar":[{"oops":1}]}"#)
     }
 
+    func testSavesAssignedProfileIDs() throws {
+        let home = makeTemporaryDirectory()
+        let store = ConfigStore(paths: CubbyPaths(home: home))
+        try JSONStore.write(Data(#"{"profiles":[{"name":"A","icon":"star"}]}"#.utf8), to: store.paths.configFile)
+        guard case .loaded(let config) = store.load() else { return XCTFail("expected loaded") }
+        guard case .loaded(let reloaded) = store.load() else { return XCTFail("expected loaded") }
+        XCTAssertEqual(reloaded.profiles.map(\.id), config.profiles.map(\.id))
+        XCTAssertFalse(reloaded.assignedProfileIDs)
+        XCTAssertTrue(store.isOwnWrite(try Data(contentsOf: store.paths.configFile)))
+    }
+
     func testDescribesSyntaxErrors() {
         do {
             _ = try JSONDecoder().decode(AppConfig.self, from: Data("{".utf8))
