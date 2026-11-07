@@ -171,8 +171,8 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
         scrollView.drawsBackground = false
         view = scrollView
 
-        NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSTableView.columnDidResizeNotification, object: outlineView)
-        NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSTableView.columnDidMoveNotification, object: outlineView)
+        NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSOutlineView.columnDidResizeNotification, object: outlineView)
+        NotificationCenter.default.addObserver(self, selector: #selector(columnGeometryChanged), name: NSOutlineView.columnDidMoveNotification, object: outlineView)
     }
 
     var selectedItems: [FileItem] {
