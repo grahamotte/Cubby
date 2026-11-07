@@ -66,7 +66,7 @@ final class FileOutlineView: NSOutlineView {
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         var frame = super.frameOfOutlineCell(atRow: row)
         if !frame.isEmpty {
-            frame.origin.x += 8
+            frame.origin.x += 12
             frame.origin.y = (rect(ofRow: row).midY - frame.height / 2).rounded()
         }
         return frame
