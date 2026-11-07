@@ -18,8 +18,8 @@ final class DropAnimation: NSObject {
 
     private static var source: Source?
     private static var running: [DropAnimation] = []
-    private static let flight: CFTimeInterval = 0.4
-    private static let pulseDuration: CFTimeInterval = 0.5
+    private static let flight: CFTimeInterval = 0.22
+    private static let pulseDuration: CFTimeInterval = 0.3
     private static let minimumSize: CGFloat = 40
     private static let limit = 12
 
