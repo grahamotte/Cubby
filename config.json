@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.8.0",
+    "build": "0.9.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.8.0",
-    "whatsNew": "Moves, copies, and trash now show their results in every pane right away, with a small spinner by the settings button while longer file operations run. Theme previews in Settings now show what each theme actually looks like."
+    "version": "0.9.0",
+    "whatsNew": "A new history button in the sidebar shows recent file operations. Dragging files now animates the move, and list folders no longer expand mid-drag. New windows open at the size of the last one, long paths in the top bar truncate in the middle instead of overlapping its buttons, and list rows stay aligned when the icon size changes."
   }
 }
