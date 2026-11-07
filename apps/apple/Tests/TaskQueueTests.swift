@@ -104,4 +104,33 @@ final class TaskQueueTests: XCTestCase {
         XCTAssertEqual(queue.tasks.first?.entry.name, "2")
         XCTAssertEqual(queue.history.entries.count, TaskQueue.logLimit + 2)
     }
+
+    func testRecordsPathsAndMarksUndoneEntries() {
+        let directory = makeTemporaryDirectory()
+        let source = makeFolder(directory, "source")
+        let destination = makeFolder(directory, "destination")
+        let file = makeFile(source, "a.txt")
+        let history = FileHistory(url: nil)
+        let queue = TaskQueue(changes: PendingChanges(), history: history)
+        _ = run(queue, HistoryEntry(.move, items: [file], destination: destination)) { operations in
+            operations.move([file], to: destination) { _ in .stop }
+        }
+        let move = history.entries[0]
+        XCTAssertEqual(move.inputs, [file.path])
+        XCTAssertEqual(move.outputs, [destination.appending(path: "a.txt").path])
+        XCTAssertEqual(history.nextUndo?.id, move.id)
+
+        var failing = move.undoEntry
+        failing.undoes = move.id
+        _ = run(queue, failing) { _ in OperationResult(errors: [OperationError(message: "Nope")]) }
+        XCTAssertNil(history.entries[0].undoneBy)
+        XCTAssertEqual(history.nextUndo?.id, move.id)
+
+        let undo = move.undoEntry
+        _ = run(queue, undo, change: move.undoChange) { move.undo(with: $0) }
+        XCTAssertEqual(history.entries[0].undoneBy, undo.id)
+        XCTAssertEqual(history.entries[2].outputs, [file.path])
+        XCTAssertNil(history.nextUndo)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+    }
 }

@@ -161,4 +161,153 @@ final class FileHistoryTests: XCTestCase {
         XCTAssertTrue(FileHistory(url: url).entries.isEmpty)
         XCTAssertTrue(FileHistory(url: directory.appending(path: "missing.json")).entries.isEmpty)
     }
+
+    private func done(_ kind: HistoryEntry.Kind, _ inputs: [String], _ outputs: [String], at date: Date) -> HistoryEntry {
+        var entry = HistoryEntry(kind, items: outputs.map { URL(filePath: $0) }, state: .finished, date: date)
+        entry.record(inputs: inputs.map { URL(filePath: $0) }, outputs: outputs.map { URL(filePath: $0) })
+        return entry
+    }
+
+    func testRecordsPathsFromResults() {
+        var move = HistoryEntry(.move, items: files("a"), destination: projects)
+        move.record(OperationResult(
+            transfers: [Transfer(source: downloads.appending(path: "a"), destination: projects.appending(path: "a"))],
+            replaced: [Transfer(source: projects.appending(path: "a"), destination: URL(filePath: "/Users/me/.Trash/a"))],
+        ))
+        XCTAssertEqual(move.inputs, ["/Users/me/Downloads/a"])
+        XCTAssertEqual(move.outputs, ["/Users/me/Projects/a"])
+        XCTAssertEqual(move.replaced, [HistoryEntry.Replacement(path: "/Users/me/Projects/a", trashed: "/Users/me/.Trash/a")])
+        XCTAssertEqual(move.paths, ["/Users/me/Downloads/a", "/Users/me/Projects/a", "/Users/me/.Trash/a"])
+
+        var copy = HistoryEntry(.copy, items: files("a"), destination: projects)
+        copy.record(OperationResult(transfers: [Transfer(source: downloads.appending(path: "a"), destination: projects.appending(path: "a"))]))
+        XCTAssertEqual(copy.inputs, [])
+        XCTAssertEqual(copy.outputs, ["/Users/me/Projects/a"])
+        XCTAssertNil(copy.replaced)
+
+        let many = (0...HistoryEntry.pathLimit).map { Transfer(source: downloads.appending(path: "\($0)"), destination: projects.appending(path: "\($0)")) }
+        var huge = HistoryEntry(.move, items: many.map(\.source), destination: projects)
+        huge.record(OperationResult(transfers: many))
+        XCTAssertNil(huge.inputs)
+        XCTAssertNil(huge.outputs)
+        XCTAssertNil(huge.paths)
+        huge.record(OperationResult(transfers: Array(many.dropFirst())))
+        XCTAssertEqual(huge.outputs?.count, HistoryEntry.pathLimit)
+        XCTAssertEqual(HistoryEntry(.move, items: files("a")).paths, nil)
+    }
+
+    func testPersistsPathsAndReadsEntriesWithout() throws {
+        let url = makeTemporaryDirectory().appending(path: "history.json")
+        let history = FileHistory(url: url)
+        var entry = done(.rename, ["/a/b"], ["/a/c"], at: Date())
+        entry.undoneBy = UUID()
+        var undo = HistoryEntry(.rename, items: [URL(filePath: "/a/c")], target: "b", state: .finished)
+        undo.undoes = entry.id
+        history.record(entry)
+        history.record(undo)
+        XCTAssertEqual(FileHistory(url: url).entries, history.entries)
+
+        let legacy = #"{"entries":[{"id":"\#(UUID().uuidString)","kind":"move","count":1,"state":"finished","started":0,"errors":0}]}"#
+        try Data(legacy.utf8).write(to: url)
+        let loaded = FileHistory(url: url) { Date(timeIntervalSinceReferenceDate: 0) }.entries
+        XCTAssertEqual(loaded.count, 1)
+        XCTAssertNil(loaded[0].paths)
+        XCTAssertNil(loaded[0].undoneBy)
+    }
+
+    func testNamesUndoActionsAndUndoneState() {
+        XCTAssertEqual(HistoryEntry.Kind.allCases.map { HistoryEntry($0, items: files("a")).undoActionName }, ["Move", "Copy", "Move to Trash", "Put Back", "Move Back", "Duplicate", "Rename", "New Folder", "New File", "New Folder With Selection", "Compress"])
+        var entry = done(.rename, ["/a/b"], ["/a/c"], at: Date())
+        XCTAssertEqual(entry.stateDescription, "Finished")
+        entry.undoneBy = UUID()
+        XCTAssertEqual(entry.stateDescription, "Undone")
+    }
+
+    func testUndoesOnlyRecentFinishedEntries() {
+        let now = Date()
+        let history = FileHistory(url: nil) { now }
+        let old = done(.newFolder, [], ["/x/old"], at: now.addingTimeInterval(-FileHistory.undoWindow - 1))
+        let fresh = done(.newFolder, [], ["/x/fresh"], at: now.addingTimeInterval(-FileHistory.undoWindow + 60))
+        var failed = done(.newFolder, [], ["/y/failed"], at: now)
+        failed.state = .failed
+        var stopped = done(.move, ["/z/a"], ["/w/a"], at: now)
+        stopped.state = .stopped
+        let empty = done(.move, [], [], at: now)
+        for entry in [old, fresh, failed, stopped, empty] {
+            history.record(entry)
+        }
+        XCTAssertEqual(history.undoable, [fresh.id])
+        XCTAssertEqual(history.nextUndo?.id, fresh.id)
+    }
+
+    func testBlocksEntriesWhosePathsWereTouchedLater() {
+        let now = Date()
+        let history = FileHistory(url: nil) { now }
+        let move = done(.move, ["/src/a"], ["/D/a"], at: now)
+        let rename = done(.rename, ["/D/a"], ["/D/b"], at: now)
+        history.record(move)
+        history.record(rename)
+        XCTAssertEqual(history.undoable, [rename.id])
+
+        let other = FileHistory(url: nil) { now }
+        let moveIntoX = done(.move, ["/src/a"], ["/X/a"], at: now)
+        let renameX = done(.rename, ["/X"], ["/Y"], at: now)
+        other.record(moveIntoX)
+        other.record(renameX)
+        XCTAssertEqual(other.undoable, [renameX.id])
+
+        let third = FileHistory(url: nil) { now }
+        let newFolder = done(.newFolder, [], ["/P/D"], at: now)
+        let moveIn = done(.move, ["/src/f"], ["/P/D/f"], at: now)
+        third.record(newFolder)
+        third.record(moveIn)
+        XCTAssertEqual(third.undoable, [moveIn.id])
+
+        let fourth = FileHistory(url: nil) { now }
+        let moveA = done(.move, ["/src/a"], ["/D/a"], at: now)
+        let copyC = done(.copy, [], ["/D/c"], at: now)
+        let caseRename = done(.rename, ["/Q/Name"], ["/Q/name"], at: now)
+        let touchesCase = done(.trash, ["/q/NAME"], ["/Users/me/.Trash/NAME"], at: now)
+        fourth.record(moveA)
+        fourth.record(caseRename)
+        fourth.record(copyC)
+        fourth.record(touchesCase)
+        XCTAssertEqual(fourth.undoable, [moveA.id, copyC.id, touchesCase.id])
+        XCTAssertEqual(fourth.nextUndo?.id, touchesCase.id)
+    }
+
+    func testSkipsUndoneEntriesAndTheirUndos() {
+        let now = Date()
+        let history = FileHistory(url: nil) { now }
+        let move = done(.move, ["/src/a"], ["/D/a"], at: now)
+        var rename = done(.rename, ["/D/a"], ["/D/b"], at: now)
+        var undo = done(.rename, ["/D/b"], ["/D/a"], at: now)
+        undo.undoes = rename.id
+        rename.undoneBy = undo.id
+        history.record(move)
+        history.record(rename)
+        history.record(undo)
+        XCTAssertEqual(history.undoable, [move.id])
+        XCTAssertEqual(history.nextUndo?.id, move.id)
+    }
+
+    func testStopsAtEntriesWithUnknownPaths() {
+        let now = Date()
+        let history = FileHistory(url: nil) { now }
+        let before = done(.newFolder, [], ["/a/one"], at: now)
+        let running = HistoryEntry(.move, items: [URL(filePath: "/b/x")], destination: URL(filePath: "/c"), date: now)
+        let after = done(.newFolder, [], ["/a/two"], at: now)
+        history.record(before)
+        history.record(running)
+        history.record(after)
+        XCTAssertEqual(history.undoable, [after.id])
+
+        let unknown = FileHistory(url: nil) { now }
+        var huge = HistoryEntry(.move, items: [URL(filePath: "/b/x")], destination: URL(filePath: "/c"), state: .finished, date: now)
+        huge.record(inputs: [], outputs: Array(repeating: URL(filePath: "/c/x"), count: HistoryEntry.pathLimit + 1))
+        unknown.record(before)
+        unknown.record(huge)
+        XCTAssertTrue(unknown.undoable.isEmpty)
+        XCTAssertNil(unknown.nextUndo)
+    }
 }

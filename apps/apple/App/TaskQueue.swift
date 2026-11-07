@@ -81,6 +81,11 @@ final class TaskQueue {
                     task.entry.state = task.state == .failed ? .failed : task.state == .stopped ? .stopped : .finished
                     task.entry.finished = task.finished
                     task.entry.errors = task.errors.count
+                    task.entry.record(result)
+                }
+                if let original = entry.undoes, result.errors.isEmpty, !result.stopped {
+                    self.history.update(original) { $0.undoneBy = entry.id }
+                    self.notify()
                 }
                 completion(result)
             }
