@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.10.0",
+    "build": "0.11.0",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.10.0",
-    "whatsNew": "Undo file operations with ⌘Z or from the history popover. Renaming several selected items opens a bulk rename sheet with find and replace, prefixes and suffixes, numbering, and case changes, previewing every new name. A renamed item stays selected inside expanded folders and deeper columns, and list view padding and disclosure chevrons are evened out."
+    "version": "0.11.0",
+    "whatsNew": "Each profile now remembers its own view settings for every folder, including list column order, widths, and visibility, and those settings follow a folder when it is renamed or moved. Moving or resizing list columns is now saved."
   }
 }
