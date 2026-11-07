@@ -117,13 +117,16 @@ final class RoundedRowView: NSTableRowView {
 }
 
 final class QuietHeaderView: NSTableHeaderView {
+    static let padding: CGFloat = 5
+
     override func draw(_ dirtyRect: NSRect) {
         Theme.content.setFill()
         dirtyRect.fill()
         guard let table = tableView else { return }
         let ascending = table.sortDescriptors.first?.ascending ?? true
         for (index, column) in table.tableColumns.enumerated() where !column.isHidden {
-            let rect = headerRect(ofColumn: index)
+            var rect = headerRect(ofColumn: index)
+            rect.size.height -= QuietHeaderView.padding
             guard rect.intersects(dirtyRect) else { continue }
             let active = table.indicatorImage(in: column) != nil
             let font = NSFont.systemFont(ofSize: 11, weight: .medium)
@@ -147,6 +150,6 @@ final class QuietHeaderView: NSTableHeaderView {
             chevron?.draw(in: NSRect(x: x + width + 4, y: rect.midY - chevron!.size.height / 2, width: chevron!.size.width, height: chevron!.size.height))
         }
         Theme.divider.setFill()
-        NSRect(x: 0, y: bounds.maxY - 1, width: bounds.width, height: 1).fill()
+        NSRect(x: 0, y: bounds.maxY - QuietHeaderView.padding - 1, width: bounds.width, height: 1).fill()
     }
 }

@@ -58,10 +58,15 @@ final class FileOutlineView: NSOutlineView {
         return view
     }
 
+    override func setFrameSize(_ newSize: NSSize) {
+        let rows = numberOfRows > 0 ? rect(ofRow: numberOfRows - 1).maxY : 0
+        super.setFrameSize(NSSize(width: newSize.width, height: max(newSize.height, rows + QuietHeaderView.padding)))
+    }
+
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         var frame = super.frameOfOutlineCell(atRow: row)
         if !frame.isEmpty {
-            frame.origin.x += 8
+            frame.origin.x += 12
             frame.origin.y = (rect(ofRow: row).midY - frame.height / 2).rounded()
         }
         return frame
@@ -113,7 +118,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     override func loadView() {
         outlineView.browser = self
-        outlineView.headerView = QuietHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 30))
+        outlineView.headerView = QuietHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 30 + QuietHeaderView.padding))
         outlineView.allowsMultipleSelection = true
         outlineView.allowsColumnReordering = true
         outlineView.allowsColumnResizing = true
