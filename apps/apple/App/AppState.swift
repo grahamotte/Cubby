@@ -210,6 +210,7 @@ final class AppState {
     func flush() {
         saveWorkItem?.cancel()
         try? folderViews.save()
+        TaskQueue.shared.history.stopRunning()
     }
 
     private func scheduleFolderViewSave() {

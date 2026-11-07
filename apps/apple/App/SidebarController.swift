@@ -42,6 +42,10 @@ final class SidebarButton: NSView {
         didSet { update() }
     }
 
+    var isBusy = false {
+        didSet { update() }
+    }
+
     init(_ symbol: String, _ description: String, target: AnyObject?, action: Selector?) {
         button = PlainButton.make(symbol, description, target: target, action: action)
         super.init(frame: .zero)
@@ -68,7 +72,7 @@ final class SidebarButton: NSView {
 
     private func update() {
         needsDisplay = true
-        button.contentTintColor = isActive ? Theme.sidebarText : Theme.sidebarSecondaryText
+        button.contentTintColor = isBusy ? Theme.accent : isActive ? Theme.sidebarText : Theme.sidebarSecondaryText
     }
 }
 
@@ -91,7 +95,7 @@ final class ProfileBar: NSStackView {
     }
 }
 
-final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuItemValidation {
+final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuItemValidation, NSPopoverDelegate {
     static let nodeType = NSPasteboard.PasteboardType("com.grahamotte.cubby.sidebar-node")
 
     weak var delegate: SidebarControllerDelegate?
@@ -100,7 +104,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
     private let profileBar = ProfileBar()
     private let emptyLabel = PassthroughLabel(wrappingLabelWithString: "Drag folders here to add them.\nRight-click to add a group.")
     private let settingsButton = SidebarButton("gearshape", "Settings", target: nil, action: #selector(BrowserWindowController.showSettings(_:)))
-    private let activitySpinner = NSProgressIndicator()
+    private lazy var historyButton = SidebarButton("clock.arrow.circlepath", "History", target: self, action: #selector(showHistory(_:)))
+    private var historyPopover: NSPopover?
+    private var historyClosed: TimeInterval = 0
     private var activityDelay: DispatchWorkItem?
     private var draggedNodes: [SidebarNode] = []
     private var reloading = false
@@ -141,12 +147,6 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         profileBar.spacing = 2
         profileBar.translatesAutoresizingMaskIntoConstraints = false
 
-        activitySpinner.style = .spinning
-        activitySpinner.controlSize = .small
-        activitySpinner.isDisplayedWhenStopped = false
-        activitySpinner.isHidden = true
-        activitySpinner.translatesAutoresizingMaskIntoConstraints = false
-
         emptyLabel.font = .systemFont(ofSize: 12)
         emptyLabel.textColor = Theme.sidebarSecondaryText
         emptyLabel.isSelectable = false
@@ -157,7 +157,7 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         root.addSubview(scroll)
         root.addSubview(emptyLabel)
         root.addSubview(settingsButton)
-        root.addSubview(activitySpinner)
+        root.addSubview(historyButton)
         root.addSubview(profileBar)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
@@ -169,9 +169,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
             emptyLabel.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -16),
             settingsButton.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 11),
             settingsButton.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
-            activitySpinner.leadingAnchor.constraint(equalTo: settingsButton.trailingAnchor, constant: 6),
-            activitySpinner.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
-            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: activitySpinner.trailingAnchor, constant: 8),
+            historyButton.leadingAnchor.constraint(equalTo: settingsButton.trailingAnchor, constant: 2),
+            historyButton.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
+            profileBar.leadingAnchor.constraint(greaterThanOrEqualTo: historyButton.trailingAnchor, constant: 8),
             profileBar.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -10),
             profileBar.centerYAnchor.constraint(equalTo: settingsButton.centerYAnchor),
         ])
@@ -182,23 +182,44 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
 
     var activity: String? {
         didSet {
-            activitySpinner.toolTip = activity
+            historyButton.button.toolTip = activity ?? "History"
             guard (activity == nil) != (oldValue == nil) else { return }
             activityDelay?.cancel()
             activityDelay = nil
             guard activity != nil else {
-                activitySpinner.isHidden = true
-                activitySpinner.stopAnimation(nil)
+                historyButton.isBusy = false
                 return
             }
             let show = DispatchWorkItem { [weak self] in
-                guard let self else { return }
-                self.activitySpinner.isHidden = false
-                self.activitySpinner.startAnimation(nil)
+                self?.historyButton.isBusy = true
             }
             activityDelay = show
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: show)
         }
+    }
+
+    @objc private func showHistory(_ sender: NSButton) {
+        if let historyPopover, historyPopover.isShown {
+            historyPopover.close()
+            return
+        }
+        guard ProcessInfo.processInfo.systemUptime - historyClosed > 0.3 else { return }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.delegate = self
+        popover.contentViewController = HistoryController()
+        popover.show(relativeTo: historyButton.bounds, of: historyButton, preferredEdge: .maxY)
+        historyPopover = popover
+        historyButton.isActive = true
+    }
+
+    func popoverWillClose(_ notification: Notification) {
+        historyClosed = ProcessInfo.processInfo.systemUptime
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        historyPopover = nil
+        historyButton.isActive = false
     }
 
     var isSettingsActive: Bool {
