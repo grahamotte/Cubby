@@ -50,4 +50,15 @@ final class FolderViewTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: Data(#"{"sort":"random"}"#.utf8)).sort, .random)
         XCTAssertEqual(Set(ViewMode.allCases.map(\.title)).count, ViewMode.allCases.count)
     }
+
+    func testColumnsDecodeRoundTripAndAffectEquality() throws {
+        XCTAssertNil(FolderView.standard.columns)
+        let decoded = try JSONDecoder().decode(FolderView.self, from: Data(#"{"mode":"list","columns":[{"id":"kind","width":90,"hidden":false},{"id":"size","width":80,"hidden":true}]}"#.utf8))
+        XCTAssertEqual(decoded.columns, [.init(id: "kind", width: 90, hidden: false), .init(id: "size", width: 80, hidden: true)])
+        XCTAssertEqual(try JSONDecoder().decode(FolderView.self, from: JSONEncoder().encode(decoded)), decoded)
+        XCTAssertNotEqual(decoded, FolderView.standard)
+        XCTAssertNil(try JSONDecoder().decode(FolderView.self, from: Data(#"{"columns":"bogus"}"#.utf8)).columns)
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(FolderView.standard)) as? [String: Any]
+        XCTAssertNil(json?["columns"])
+    }
 }

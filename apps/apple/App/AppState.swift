@@ -3,7 +3,6 @@ import AppKit
 extension Notification.Name {
     static let sidebarChanged = Notification.Name("CubbySidebarChanged")
     static let showHiddenChanged = Notification.Name("CubbyShowHiddenChanged")
-    static let listColumnsChanged = Notification.Name("CubbyListColumnsChanged")
     static let configChanged = Notification.Name("CubbyConfigChanged")
     static let themeChanged = Notification.Name("CubbyThemeChanged")
     static let profileRemoved = Notification.Name("CubbyProfileRemoved")
@@ -20,7 +19,6 @@ final class AppState {
     private(set) var config: AppConfig
     private(set) var configError: String?
     private(set) var themes: ThemeLibrary
-    var listColumns: [SessionState.Column] = []
     var cutURLs: [URL] = []
     var cutChangeCount = -1
     private var saveWorkItem: DispatchWorkItem?
@@ -29,7 +27,6 @@ final class AppState {
 
     private init() {
         configStore = ConfigStore(paths: paths)
-        folderViews = FolderViewStore(url: paths.folderViewsFile)
         switch configStore.load() {
         case .loaded(let loaded), .created(let loaded):
             config = loaded
@@ -37,9 +34,11 @@ final class AppState {
             config = fallback
             configError = message
         }
+        folderViews = FolderViewStore(url: paths.folderViewsFile, legacyProfile: configError == nil ? config.profileID : nil)
         try? FileManager.default.createDirectory(at: paths.themesDirectory, withIntermediateDirectories: true)
         themes = ThemeLibrary(directory: paths.themesDirectory)
         folderViews.prune { FileManager.default.fileExists(atPath: $0) }
+        try? folderViews.save()
         configWatchers = [paths.configDirectory.path, paths.configFile.path].map { path in
             PathWatcher(path: path) { [weak self] in self?.reloadConfigIfChanged() }
         }
@@ -154,7 +153,12 @@ final class AppState {
 
     func removeProfile(at index: Int) {
         let theme = config.theme
+        let id = config.profileID(at: index)
         if config.removeProfile(at: index) {
+            if let id {
+                folderViews.removeProfile(id)
+                scheduleFolderViewSave()
+            }
             NotificationCenter.default.post(name: .profileRemoved, object: nil, userInfo: ["index": index])
             profilesDidChange(themeBefore: theme)
         }
@@ -192,11 +196,11 @@ final class AppState {
     }
 
     func view(for path: String) -> FolderView {
-        folderViews.view(for: path, identity: FolderIdentity(path: path)) ?? config.defaultView
+        folderViews.view(for: path, identity: FolderIdentity(path: path), profile: config.profileID) ?? config.defaultView
     }
 
     func setView(_ view: FolderView, for path: String) {
-        folderViews.setView(view, for: path, identity: FolderIdentity(path: path), defaultView: config.defaultView)
+        folderViews.setView(view, for: path, identity: FolderIdentity(path: path), profile: config.profileID, defaultView: config.defaultView)
         scheduleFolderViewSave()
     }
 
@@ -228,6 +232,9 @@ final class AppState {
             let themeChanged = loaded.theme != config.theme || loaded.appearance != config.appearance
             config = loaded
             configError = nil
+            if loaded.assignedProfileIDs {
+                saveConfig()
+            }
             NotificationCenter.default.post(name: .sidebarChanged, object: nil)
             NotificationCenter.default.post(name: .configChanged, object: nil)
             if hiddenChanged {

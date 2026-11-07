@@ -62,6 +62,12 @@ enum SortKey: String, Codable, CaseIterable {
 }
 
 struct FolderView: Codable, Equatable {
+    struct Column: Codable, Equatable {
+        var id: String
+        var width: Double
+        var hidden: Bool
+    }
+
     static let iconSizes = 32...512
     static let listIconSizes = [16, 24, 32, 48, 64, 96, 128]
 
@@ -70,15 +76,17 @@ struct FolderView: Codable, Equatable {
     var ascending: Bool
     var iconSize: Int
     var listIconSize: Int
+    var columns: [Column]?
 
     static let standard = FolderView(mode: .list, sort: .name, ascending: true, iconSize: 80)
 
-    init(mode: ViewMode, sort: SortKey, ascending: Bool, iconSize: Int, listIconSize: Int = 16) {
+    init(mode: ViewMode, sort: SortKey, ascending: Bool, iconSize: Int, listIconSize: Int = 16, columns: [Column]? = nil) {
         self.mode = mode
         self.sort = sort
         self.ascending = ascending
         self.iconSize = min(max(iconSize, FolderView.iconSizes.lowerBound), FolderView.iconSizes.upperBound)
         self.listIconSize = min(max(listIconSize, FolderView.listIconSizes[0]), FolderView.listIconSizes[FolderView.listIconSizes.count - 1])
+        self.columns = columns
     }
 
     func steppedListIconSize(bigger: Bool) -> Int {
@@ -95,6 +103,7 @@ struct FolderView: Codable, Equatable {
             ascending: (try? container.decodeIfPresent(Bool.self, forKey: .ascending)) ?? standard.ascending,
             iconSize: (try? container.decodeIfPresent(Int.self, forKey: .iconSize)) ?? standard.iconSize,
             listIconSize: (try? container.decodeIfPresent(Int.self, forKey: .listIconSize)) ?? standard.listIconSize,
+            columns: try? container.decodeIfPresent([Column].self, forKey: .columns),
         )
     }
 }

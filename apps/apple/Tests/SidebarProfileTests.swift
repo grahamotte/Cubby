@@ -13,11 +13,22 @@ final class SidebarProfileTests: XCTestCase {
         XCTAssertEqual(profile.icon, SidebarProfile.icons[0])
         XCTAssertTrue(profile.tree.nodes.isEmpty)
         XCTAssertNil(profile.theme)
+        XCTAssertEqual(profile.id, "")
+    }
+
+    func testNewProfilesGetUniqueIDs() {
+        let a = SidebarProfile(name: "A", icon: "star")
+        let b = SidebarProfile.make(after: [a])
+        XCTAssertFalse(a.id.isEmpty)
+        XCTAssertNotEqual(a.id, b.id)
+        XCTAssertNotEqual(SidebarProfile.personal([]).id, SidebarProfile.personal([]).id)
+        XCTAssertEqual(SidebarProfile(id: "fixed", name: "A", icon: "star").id, "fixed")
     }
 
     func testRoundTripsSidebar() throws {
         let profile = SidebarProfile(name: "Work", icon: "briefcase", theme: "grove", sidebar: [SidebarNode.group("Code", [SidebarNode.folder("~/Code")])])
         let decoded = try JSONDecoder().decode(SidebarProfile.self, from: JSONStore.encode(profile))
+        XCTAssertEqual(decoded.id, profile.id)
         XCTAssertEqual(decoded.name, "Work")
         XCTAssertEqual(decoded.icon, "briefcase")
         XCTAssertEqual(decoded.theme, "grove")
@@ -51,7 +62,9 @@ final class SidebarProfileTests: XCTestCase {
 
     func testRenameTrimsAndRejectsBlankOrUnchanged() {
         var profile = SidebarProfile.personal([])
+        let id = profile.id
         XCTAssertTrue(profile.rename(to: " Home\n"))
+        XCTAssertEqual(profile.id, id)
         XCTAssertEqual(profile.name, "Home")
         XCTAssertFalse(profile.rename(to: "Home"))
         XCTAssertFalse(profile.rename(to: "  "))
