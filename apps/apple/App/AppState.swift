@@ -16,7 +16,7 @@ final class AppState {
     let paths = CubbyPaths.standard
     let configStore: ConfigStore
     let folderViews: FolderViewStore
-    let undoManager = UndoManager()
+    let undoManager: UndoManager = HistoryUndoManager()
     private(set) var config: AppConfig
     private(set) var configError: String?
     private(set) var themes: ThemeLibrary
@@ -28,7 +28,6 @@ final class AppState {
     private var themeWatchers: [PathWatcher] = []
 
     private init() {
-        undoManager.groupsByEvent = false
         configStore = ConfigStore(paths: paths)
         folderViews = FolderViewStore(url: paths.folderViewsFile)
         switch configStore.load() {

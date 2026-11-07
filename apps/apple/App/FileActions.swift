@@ -2,8 +2,6 @@ import AppKit
 
 @MainActor
 enum FileActions {
-    private static var undoManager: UndoManager { AppState.shared.undoManager }
-
     static func transfer(_ urls: [URL], to directory: URL, copy: Bool, completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
         run(HistoryEntry(copy ? .copy : .move, items: urls, destination: directory), change: copy ? .copy(urls, to: directory) : .move(urls, to: directory)) { operations in
@@ -23,37 +21,28 @@ enum FileActions {
                     AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
                 }
             }
-            registerUndo(result.transfers, replaced: result.replaced, copy: copy)
             completion?(result.transfers.map(\.destination))
         }
     }
 
-    static func trash(_ urls: [URL], undoable: Bool = true) {
+    static func trash(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
-        run(HistoryEntry(.trash, items: urls), change: .remove(urls)) { $0.trash(urls) } completion: { result in
-            guard undoable, !result.transfers.isEmpty else { return }
-            let transfers = result.transfers
-            registerUndo("Move to Trash") {
-                let sources = transfers.map(\.source)
-                run(HistoryEntry(.putBack, items: sources, destination: HistoryEntry.folder(of: sources))) { $0.moveBack(transfers) } completion: { _ in }
-            }
-        }
+        run(HistoryEntry(.trash, items: urls), change: .remove(urls)) { $0.trash(urls) } completion: { _ in }
     }
 
-    static func rename(_ url: URL, to name: String, undoable: Bool = true) -> URL? {
+    static func rename(_ url: URL, to name: String) -> URL? {
         do {
             let renamed = try FileOperations().rename(url, to: name)
             guard renamed != url else { return url }
-            TaskQueue.shared.record(HistoryEntry(.rename, items: [url], target: renamed.lastPathComponent, state: .finished))
+            var entry = HistoryEntry(.rename, items: [url], target: renamed.lastPathComponent, state: .finished)
+            entry.record(inputs: [url], outputs: [renamed])
+            TaskQueue.shared.record(entry)
             AppState.shared.folderMoved(from: url.standardizedFileURL.path, to: renamed.standardizedFileURL.path)
-            if undoable {
-                registerUndo("Rename") {
-                    _ = rename(renamed, to: url.lastPathComponent, undoable: false)
-                }
-            }
             return renamed
         } catch {
-            TaskQueue.shared.record(HistoryEntry(.rename, items: [url], target: name, state: .failed))
+            var entry = HistoryEntry(.rename, items: [url], target: name, state: .failed)
+            entry.record(inputs: [], outputs: [])
+            TaskQueue.shared.record(entry)
             present(error)
             return nil
         }
@@ -62,7 +51,6 @@ enum FileActions {
     static func duplicate(_ urls: [URL], completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
         run(HistoryEntry(.duplicate, items: urls)) { $0.duplicate(urls) } completion: { result in
-            registerUndo(result.transfers, copy: true)
             completion?(result.transfers.map(\.destination))
         }
     }
@@ -77,17 +65,7 @@ enum FileActions {
 
     static func newFolder(with urls: [URL], in directory: URL, completion: @escaping (URL) -> Void) {
         guard let folder = try? FileOperations().makeFolder(in: directory, name: "New Folder With Items") else { return }
-        run(HistoryEntry(.newFolderWithItems, items: urls, destination: folder, target: folder.lastPathComponent), change: .move(urls, to: folder)) { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { result in
-            let transfers = result.transfers
-            registerUndo("New Folder With Selection") {
-                run(moveBackEntry(transfers), change: .moveBack(transfers)) { operations in
-                    var result = operations.moveBack(transfers)
-                    if (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
-                        do { try FileManager.default.removeItem(at: folder) } catch { result.errors.append(error) }
-                    }
-                    return result
-                } completion: { _ in }
-            }
+        run(HistoryEntry(.newFolderWithItems, items: urls, destination: folder, target: folder.lastPathComponent), change: .move(urls, to: folder)) { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { _ in
             completion(folder)
         }
     }
@@ -116,9 +94,27 @@ enum FileActions {
             return result
         } completion: { result in
             guard let transfer = result.transfers.first else { return }
-            registerUndo([transfer], copy: true)
             completion(transfer.destination)
         }
+    }
+
+    static func undo(_ entry: HistoryEntry) {
+        guard TaskQueue.shared.history.undoable.contains(entry.id) else { return }
+        if let error = entry.undoPreflight() {
+            present(error)
+            return
+        }
+        run(entry.undoEntry, change: entry.undoChange) { entry.undo(with: $0) } completion: { result in
+            guard entry.movesBack, entry.kind != .trash else { return }
+            for transfer in result.transfers {
+                AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
+            }
+        }
+    }
+
+    static func undoLatest() {
+        guard let entry = TaskQueue.shared.history.nextUndo else { return }
+        undo(entry)
     }
 
     static func openInTerminal(_ directory: URL) {
@@ -178,47 +174,14 @@ enum FileActions {
     private static func create(_ kind: HistoryEntry.Kind, _ make: () throws -> URL) -> URL? {
         do {
             let url = try make()
-            TaskQueue.shared.record(HistoryEntry(kind, items: [url], state: .finished))
-            registerUndo(url.hasDirectoryPath ? "New Folder" : "New File") { trash([url], undoable: false) }
+            var entry = HistoryEntry(kind, items: [url], state: .finished)
+            entry.record(inputs: [], outputs: [url])
+            TaskQueue.shared.record(entry)
             return url
         } catch {
             present(error)
             return nil
         }
-    }
-
-    private static func registerUndo(_ transfers: [Transfer], replaced: [Transfer] = [], copy: Bool) {
-        guard !transfers.isEmpty else { return }
-        registerUndo(copy ? "Copy" : "Move") {
-            if copy {
-                run(HistoryEntry(.trash, items: transfers.map(\.destination)), change: .remove(transfers.map(\.destination))) { operations in
-                    var result = operations.trash(transfers.map(\.destination))
-                    result.errors += operations.moveBack(replaced).errors
-                    return result
-                } completion: { _ in }
-            } else {
-                run(moveBackEntry(transfers), change: .moveBack(transfers)) { operations in
-                    var result = operations.moveBack(transfers)
-                    result.errors += operations.moveBack(replaced).errors
-                    return result
-                } completion: { result in
-                    for transfer in result.transfers {
-                        AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
-                    }
-                }
-            }
-        }
-    }
-
-    private static func moveBackEntry(_ transfers: [Transfer]) -> HistoryEntry {
-        HistoryEntry(.moveBack, items: transfers.map(\.destination), destination: HistoryEntry.folder(of: transfers.map(\.source)))
-    }
-
-    private static func registerUndo(_ name: String, _ handler: @escaping () -> Void) {
-        undoManager.beginUndoGrouping()
-        undoManager.registerUndo(withTarget: AppState.shared) { _ in handler() }
-        undoManager.setActionName(name)
-        undoManager.endUndoGrouping()
     }
 
     private static func askConflict(_ destination: URL) -> (ConflictChoice, Bool) {

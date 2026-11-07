@@ -22,6 +22,13 @@ struct HistoryEntry: Codable, Equatable, Identifiable {
         case failed
     }
 
+    struct Replacement: Codable, Equatable {
+        var path: String
+        var trashed: String
+    }
+
+    static let pathLimit = 1000
+
     var id: UUID
     var kind: Kind
     var count: Int
@@ -33,6 +40,11 @@ struct HistoryEntry: Codable, Equatable, Identifiable {
     var started: Date
     var finished: Date?
     var errors: Int
+    var inputs: [String]?
+    var outputs: [String]?
+    var replaced: [Replacement]?
+    var undoes: UUID?
+    var undoneBy: UUID?
 
     init(_ kind: Kind, items: [URL], destination: URL? = nil, target: String? = nil, state: State = .running, date: Date = Date()) {
         id = UUID()
@@ -52,6 +64,50 @@ struct HistoryEntry: Codable, Equatable, Identifiable {
         let parents = Set(urls.map { $0.standardizedFileURL.deletingLastPathComponent().path })
         guard parents.count == 1, let parent = parents.first else { return nil }
         return URL(filePath: parent, directoryHint: .isDirectory)
+    }
+
+    var createsOutputs: Bool {
+        switch kind {
+        case .copy, .duplicate, .newFolder, .newFile, .compress: return true
+        case .move, .trash, .putBack, .moveBack, .rename, .newFolderWithItems: return false
+        }
+    }
+
+    var paths: [String]? {
+        guard let inputs, let outputs else { return nil }
+        return inputs + outputs + (replaced ?? []).map(\.trashed)
+    }
+
+    var undoActionName: String {
+        switch kind {
+        case .move: return "Move"
+        case .copy: return "Copy"
+        case .trash: return "Move to Trash"
+        case .putBack: return "Put Back"
+        case .moveBack: return "Move Back"
+        case .duplicate: return "Duplicate"
+        case .rename: return "Rename"
+        case .newFolder: return "New Folder"
+        case .newFile: return "New File"
+        case .newFolderWithItems: return "New Folder With Selection"
+        case .compress: return "Compress"
+        }
+    }
+
+    mutating func record(_ result: OperationResult) {
+        record(inputs: createsOutputs ? [] : result.transfers.map(\.source), outputs: result.transfers.map(\.destination), replaced: result.replaced)
+    }
+
+    mutating func record(inputs: [URL], outputs: [URL], replaced: [Transfer] = []) {
+        guard outputs.count + replaced.count <= HistoryEntry.pathLimit else {
+            self.inputs = nil
+            self.outputs = nil
+            self.replaced = nil
+            return
+        }
+        self.inputs = inputs.map(\.standardizedFileURL.path)
+        self.outputs = outputs.map(\.standardizedFileURL.path)
+        self.replaced = replaced.isEmpty ? nil : replaced.map { Replacement(path: $0.source.standardizedFileURL.path, trashed: $0.destination.standardizedFileURL.path) }
     }
 
     var summary: String {
@@ -91,9 +147,10 @@ struct HistoryEntry: Codable, Equatable, Identifiable {
     var stateDescription: String {
         switch state {
         case .running: return "Running"
-        case .finished: return "Finished"
         case .stopped: return "Stopped"
         case .failed: return errors > 1 ? "Failed with \(errors.formatted()) errors" : "Failed"
+        case .finished where undoneBy != nil: return "Undone"
+        case .finished: return "Finished"
         }
     }
 
@@ -112,6 +169,7 @@ final class FileHistory {
     }
 
     static let retention: TimeInterval = 30 * 24 * 60 * 60
+    static let undoWindow: TimeInterval = 24 * 60 * 60
     static let limit = 5000
 
     let url: URL?
@@ -136,6 +194,34 @@ final class FileHistory {
         return shown.filter { $0.state == .running } + shown.filter { $0.state != .running }
     }
 
+    var undoable: Set<UUID> {
+        let cutoff = now().addingTimeInterval(-FileHistory.undoWindow)
+        var result: Set<UUID> = []
+        var touched: Set<String> = []
+        var ancestors: Set<String> = []
+        for entry in entries.reversed() {
+            guard entry.started >= cutoff, entry.state != .running, let paths = entry.paths else { break }
+            if entry.undoes != nil || entry.undoneBy != nil { continue }
+            let keys = paths.map { $0.lowercased() }
+            let blocked = keys.contains { key in
+                touched.contains(key) || ancestors.contains(key) || FileHistory.ancestors(of: key).contains { touched.contains($0) }
+            }
+            if !blocked && entry.state == .finished && entry.outputs?.isEmpty == false {
+                result.insert(entry.id)
+            }
+            for key in keys {
+                touched.insert(key)
+                ancestors.formUnion(FileHistory.ancestors(of: key))
+            }
+        }
+        return result
+    }
+
+    var nextUndo: HistoryEntry? {
+        let undoable = undoable
+        return entries.last { undoable.contains($0.id) }
+    }
+
     func record(_ entry: HistoryEntry) {
         entries.append(entry)
         save()
@@ -155,6 +241,16 @@ final class FileHistory {
             entries[index].state = .stopped
         }
         save()
+    }
+
+    private static func ancestors(of path: String) -> [String] {
+        var result: [String] = []
+        var current = (path as NSString).deletingLastPathComponent
+        while current.count > 1 {
+            result.append(current)
+            current = (current as NSString).deletingLastPathComponent
+        }
+        return result
     }
 
     private func expire() {
