@@ -233,7 +233,9 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         model.onChange = { [weak self] change in
             guard let self else { return }
             self.browser?.reload(change)
-            if case .children = change {} else {
+            if case .children(let item) = change {
+                self.applyPending(in: item.path)
+            } else {
                 if case .loaded = change, self.restoresScroll {
                     self.restoresScroll = false
                     if !self.scrolledWhileLoading, let anchor = self.scrollMemory.anchor(for: self.model.path) {
@@ -241,7 +243,7 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
                     }
                 }
                 self.setLoading(false)
-                self.applyPending()
+                self.applyPending(in: self.model.path)
                 if let error = self.model.error, case .loaded = change {
                     self.showMessage(error.isPermissionDenied ? "Cubby needs Full Disk Access to read this folder." : error.localizedDescription)
                 }
@@ -269,26 +271,27 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
         message.isHidden = text == nil
     }
 
-    private func applyPending() {
-        if !pendingSelection.isEmpty {
+    private func applyPending(in folder: String) {
+        if let first = pendingSelection.first, (first as NSString).deletingLastPathComponent == folder {
             browser?.select(paths: pendingSelection, scroll: true)
             pendingSelection = []
         }
-        if let rename = pendingRename, model.items.contains(where: { $0.path == rename }) {
+        if folder == model.path, let rename = pendingRename, model.items.contains(where: { $0.path == rename }) {
             pendingRename = nil
             browser?.beginRename(path: rename)
         }
     }
 
     private func reveal(_ urls: [URL], rename: Bool = false) {
-        let paths = Set(urls.map(\.standardizedFileURL.path).filter { ($0 as NSString).deletingLastPathComponent == model.path })
-        guard !paths.isEmpty else { return }
-        if rename, let first = paths.first {
+        let all = urls.map(\.standardizedFileURL.path)
+        guard let folder = all.first.map({ ($0 as NSString).deletingLastPathComponent }) else { return }
+        let paths = Set(all.filter { ($0 as NSString).deletingLastPathComponent == folder })
+        if rename, folder == model.path, let first = paths.first {
             pendingRename = first
         }
         pendingSelection = paths
-        if model.items.contains(where: { paths.contains($0.path) }) {
-            applyPending()
+        if folder == model.path, model.items.contains(where: { paths.contains($0.path) }) {
+            applyPending(in: folder)
         }
     }
 
@@ -330,6 +333,10 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
 
     func browseDirectoryChanged() {
         delegate?.paneDidNavigate(self)
+    }
+
+    func browserDidReload(_ folder: String) {
+        applyPending(in: folder)
     }
 
     func focusNextPane() {
