@@ -48,7 +48,7 @@ enum ContextMenu {
         menu.addItem(.separator())
         add("Move to Trash", #selector(PaneController.moveToTrash(_:)), symbol: "trash")
         menu.addItem(.separator())
-        add("Rename", #selector(PaneController.renameSelection(_:)), symbol: "pencil", enabled: single != nil)
+        add(single == nil ? "Rename…" : "Rename", #selector(PaneController.renameSelection(_:)), symbol: "pencil")
         add("Duplicate", #selector(PaneController.duplicate(_:)), symbol: "plus.square.on.square")
         add("Compress", #selector(PaneController.compress(_:)), symbol: "archivebox")
         add("Quick Look", #selector(PaneController.quickLook(_:)), symbol: "eye")

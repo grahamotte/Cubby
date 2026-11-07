@@ -197,6 +197,9 @@ Soft, small radii that only appear where something is selectable or grouped: 6 p
 ### Settings Page
 Settings replaces the pane area in the window (never a separate window). Its header shares the top bar's height and position with a close button at the right. Controls follow the theme: switches and the icon size slider are small custom-drawn controls (accent track or fill when on, a resting-selection track when off, and a Knob-colored knob) that keep native clicks, keyboard toggling, and accessibility; pop-ups are borderless in secondary text. The filter field is a pill in resting selection with a hairline border that turns accent while editing, and text selection in fields uses the 20% accent wash with a text-colored caret. Menus, scrollers, and spinners stay system-drawn. Profiles are accordion rows in one card: a collapsed row shows a chevron, the profile's icon and name, and a small light/dark swatch pair with the theme name; the one expanded row (the active profile when Settings opens) shows the editable icon, name, and delete button above that profile's theme grid.
 
+### Rename Sheet
+Renaming several selected items opens a sheet on the content plane instead of inline editing. A card holds the rules as a right-aligned 12 pt secondary label beside each control: text fields are 6 pt rounded rectangles in resting selection with a hairline border that turns accent while editing, pop-ups are borderless in secondary text, and the regular expression toggle is the themed switch. A second card previews every name as old (secondary) → new (text); unchanged names fade to tertiary and conflicts turn warning. Buttons are 28 pt tall with a 6 pt radius: the default one is solid accent with accent text, the other resting selection with a hairline.
+
 ## Do's and Don'ts
 
 ### Do:

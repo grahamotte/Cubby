@@ -173,6 +173,64 @@ final class FileOperationsTests: XCTestCase {
         let duplicated = operations.duplicate([file, file])
         XCTAssertEqual(duplicated.transfers.map(\.destination.lastPathComponent), ["untitled copy.txt", "untitled copy 2.txt"])
     }
+
+    func testRenamesABatch() throws {
+        let root = makeTemporaryDirectory()
+        let a = makeFile(root, "a.txt", contents: "a")
+        let b = makeFile(root, "b.txt", contents: "b")
+        let same = makeFile(root, "same.txt")
+        let renames = [
+            Transfer(source: a, destination: root.appending(path: "1.txt")),
+            Transfer(source: b, destination: root.appending(path: "2.txt")),
+            Transfer(source: same, destination: same),
+        ]
+        let result = operations.rename(renames)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.transfers, Array(renames.prefix(2)))
+        XCTAssertEqual(try String(contentsOf: root.appending(path: "1.txt"), encoding: .utf8), "a")
+        XCTAssertEqual(try String(contentsOf: root.appending(path: "2.txt"), encoding: .utf8), "b")
+        XCTAssertTrue(exists(same))
+    }
+
+    func testRenamesSwapsAndChainsThroughTemporaryNames() throws {
+        let root = makeTemporaryDirectory()
+        let a = makeFile(root, "a", contents: "a")
+        let b = makeFile(root, "b", contents: "b")
+        let c = makeFile(root, "c", contents: "c")
+        let result = operations.rename([
+            Transfer(source: a, destination: b),
+            Transfer(source: b, destination: a),
+            Transfer(source: c, destination: root.appending(path: "C")),
+        ])
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.transfers.count, 3)
+        XCTAssertEqual(try String(contentsOf: a, encoding: .utf8), "b")
+        XCTAssertEqual(try String(contentsOf: b, encoding: .utf8), "a")
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: root.path).sorted(), ["C", "a", "b"])
+
+        let chain = operations.rename([
+            Transfer(source: a, destination: b),
+            Transfer(source: b, destination: root.appending(path: "d")),
+        ])
+        XCTAssertTrue(chain.errors.isEmpty)
+        XCTAssertEqual(try String(contentsOf: b, encoding: .utf8), "b")
+        XCTAssertEqual(try String(contentsOf: root.appending(path: "d"), encoding: .utf8), "a")
+    }
+
+    func testRenameBatchKeepsTakenAndInvalidNames() throws {
+        let root = makeTemporaryDirectory()
+        let a = makeFile(root, "a")
+        let b = makeFile(root, "b")
+        makeFile(root, "taken")
+        let result = operations.rename([
+            Transfer(source: a, destination: root.appending(path: "taken")),
+            Transfer(source: b, destination: root.appending(path: "x:y")),
+        ])
+        XCTAssertEqual(result.errors.count, 2)
+        XCTAssertTrue(result.transfers.isEmpty)
+        XCTAssertTrue(exists(a))
+        XCTAssertTrue(exists(b))
+    }
 }
 
 final class FileOperationsReplaceSafetyTests: XCTestCase {

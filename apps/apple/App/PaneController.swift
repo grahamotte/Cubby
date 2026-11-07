@@ -436,8 +436,19 @@ final class PaneController: NSViewController, FileBrowserHost, NSMenuItemValidat
     }
 
     @objc func renameSelection(_ sender: Any?) {
-        guard let item = selectedItems.first else { return }
-        browser?.beginRename(path: item.path)
+        let items = selectedItems
+        if items.count > 1 {
+            bulkRename(items)
+        } else if let item = items.first {
+            browser?.beginRename(path: item.path)
+        }
+    }
+
+    func bulkRename(_ items: [FileItem]) {
+        guard items.count > 1, let window = view.window else { return }
+        BulkRenameController.present(items.map { BulkRename.Item(url: $0.url, splitsExtension: !$0.isFolder) }, for: window) { renames in
+            FileActions.rename(renames) { [weak self] urls in self?.reveal(urls) }
+        }
     }
 
     @objc func duplicate(_ sender: Any?) {

@@ -11,6 +11,7 @@ protocol FileBrowserHost: AnyObject {
     func browserDidBecomeActive()
     func toggleQuickLook()
     func rename(_ item: FileItem, to name: String)
+    func bulkRename(_ items: [FileItem])
     func setSort(_ key: SortKey, ascending: Bool)
     func setIconSize(_ size: Int)
     func setListIconSize(_ size: Int)

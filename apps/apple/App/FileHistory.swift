@@ -123,7 +123,7 @@ struct HistoryEntry: Codable, Equatable, Identifiable {
         case .putBack: return "\(verb("Put", "Putting")) back \(subject)\(to)"
         case .moveBack: return "\(verb("Moved", "Moving")) \(subject) back\(to)"
         case .duplicate: return "\(verb("Duplicated", "Duplicating")) \(subject)\(into)"
-        case .rename: return "\(verb("Renamed", "Renaming")) \(subject) to \(target)"
+        case .rename: return self.target == nil ? "\(verb("Renamed", "Renaming")) \(subject)\(into)" : "\(verb("Renamed", "Renaming")) \(subject) to \(target)"
         case .newFolder: return "\(verb("Created", "Creating")) folder \(subject)\(into)"
         case .newFile: return "\(verb("Created", "Creating")) file \(subject)\(into)"
         case .newFolderWithItems: return "\(verb("Moved", "Moving")) \(subject) into new folder \(target)"

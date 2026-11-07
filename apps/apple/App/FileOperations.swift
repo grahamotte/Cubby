@@ -102,6 +102,53 @@ final class FileOperations {
         return destination
     }
 
+    func rename(_ renames: [Transfer]) -> OperationResult {
+        var result = OperationResult()
+        let changed = renames.filter { $0.source.lastPathComponent != $0.destination.lastPathComponent }
+        let sources = Set(changed.map { BulkRename.key($0.source) })
+        var staged: [(Transfer, URL)] = []
+        var finished: [String: Transfer] = [:]
+        for rename in changed {
+            let name = rename.destination.lastPathComponent
+            if let message = FileNaming.validationError(for: name) {
+                result.errors.append(OperationError(message: message))
+                continue
+            }
+            let key = BulkRename.key(rename.destination)
+            if key != BulkRename.key(rename.source) && sources.contains(key) {
+                let temporary = rename.source.deletingLastPathComponent().appending(path: ".cubby-rename-\(UUID().uuidString)")
+                do {
+                    try fileManager.moveItem(at: rename.source, to: temporary)
+                    staged.append((rename, temporary))
+                } catch {
+                    result.errors.append(error)
+                }
+                continue
+            }
+            do {
+                finished[BulkRename.key(rename.source)] = Transfer(source: rename.source, destination: try self.rename(rename.source, to: name))
+            } catch {
+                result.errors.append(error)
+            }
+        }
+        for (rename, temporary) in staged {
+            do {
+                if exists(rename.destination.path) {
+                    throw OperationError(message: "The name “\(rename.destination.lastPathComponent)” is already taken. Please choose a different name.")
+                }
+                try fileManager.moveItem(at: temporary, to: rename.destination)
+                finished[BulkRename.key(rename.source)] = rename
+            } catch {
+                result.errors.append(error)
+                if (try? fileManager.moveItem(at: temporary, to: rename.source)) == nil {
+                    result.errors.append(OperationError(message: "“\(rename.source.lastPathComponent)” was left as “\(temporary.lastPathComponent)”."))
+                }
+            }
+        }
+        result.transfers = changed.compactMap { finished[BulkRename.key($0.source)] }
+        return result
+    }
+
     func makeFolder(in directory: URL, name: String = "untitled folder") throws -> URL {
         let destination = directory.appending(path: FileNaming.available(name, in: directory.path, exists: exists), directoryHint: .isDirectory)
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: false)
