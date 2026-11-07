@@ -39,6 +39,7 @@ let package = Package(
                 "AppConfig.swift",
                 "Archive.swift",
                 "ConfigStore.swift",
+                "CrumbFit.swift",
                 "CubbyPaths.swift",
                 "DebugCommand.swift",
                 "DirectoryListing.swift",
