@@ -349,6 +349,10 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
         columns.first { $0.table === table }
     }
 
+    private func row(forPath path: String, in table: NSTableView) -> Int? {
+        column(for: table).flatMap { items(in: $0).firstIndex { $0.url.standardizedFileURL.path == path || $0.path == path } }
+    }
+
     @objc private func doubleClicked(_ sender: NSTableView) {
         guard sender.clickedRow >= 0, let column = column(for: sender) else { return }
         let items = selected(in: column)
@@ -400,6 +404,12 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
 
     func tableView(_ tableView: NSTableView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forRowIndexes rowIndexes: IndexSet) {
         DragSupport.showCountOnly(session, count: rowIndexes.count, from: tableView, at: screenPoint)
+        guard let column = column(for: tableView) else { return }
+        let items = items(in: column)
+        DropAnimation.trackSource(rowIndexes.compactMap { items.indices.contains($0) ? items[$0].url : nil }) { [weak self, weak tableView] path in
+            guard let self, let tableView, let row = self.row(forPath: path, in: tableView) else { return nil }
+            return DropAnimation.icon(row: row, in: tableView)
+        }
     }
 
     func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
@@ -415,9 +425,14 @@ final class ColumnBrowser: NSViewController, FileBrowser, NSTableViewDataSource,
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         guard let column = column(for: tableView) else { return false }
         let items = items(in: column)
-        let directory = dropOperation == .on && items.indices.contains(row) && items[row].isFolder ? items[row].url : column.path.fileURL
+        let folder = dropOperation == .on && items.indices.contains(row) && items[row].isFolder ? items[row] : nil
+        let directory = folder?.url ?? column.path.fileURL
         let operation = DragSupport.operation(for: info, to: directory)
         guard !operation.isEmpty else { return false }
+        DropAnimation.run(info, in: tableView) { [weak self, weak tableView] in
+            guard let self, let tableView, let folder, let row = self.row(forPath: folder.path, in: tableView) else { return nil }
+            return DropAnimation.row(row, in: tableView)
+        }
         return host?.drop(DragSupport.urls(from: info), into: directory, operation: operation) ?? false
     }
 }

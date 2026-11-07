@@ -5,7 +5,7 @@ final class FileTileItem: NSCollectionViewItem {
     static let labelHeight: CGFloat = 36
     static let labelFont = NSFont.systemFont(ofSize: 12)
 
-    private let thumbnail = ThumbnailView()
+    let thumbnail = ThumbnailView()
     private let label = PassthroughLabel(wrappingLabelWithString: "")
     private let selectionBackground = FillView()
     private let labelBackground = FillView()
@@ -221,6 +221,11 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func item(at index: Int) -> FileItem? {
         items.indices.contains(index) ? items[index] : nil
+    }
+
+    private func tile(forPath path: String) -> FileTileItem? {
+        guard let index = items.firstIndex(where: { $0.url.standardizedFileURL.path == path || $0.path == path }) else { return nil }
+        return collectionView.item(at: IndexPath(item: index, section: 0)) as? FileTileItem
     }
 
     func makeLayout() -> NSCollectionViewLayout {
@@ -449,6 +454,10 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func collectionView(_ collectionView: NSCollectionView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItemsAt indexPaths: Set<IndexPath>) {
         DragSupport.showCountOnly(session, count: indexPaths.count, from: collectionView, at: screenPoint)
+        DropAnimation.trackSource(indexPaths.sorted().compactMap { item(at: $0.item)?.url }) { [weak self] path in
+            guard let self, let tile = self.tile(forPath: path), self.collectionView.visibleRect.intersects(tile.view.frame), let image = tile.thumbnail.image else { return nil }
+            return (image, tile.thumbnail)
+        }
     }
 
     func collectionView(_ collectionView: NSCollectionView, validateDrop draggingInfo: NSDraggingInfo, proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>, dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
@@ -463,11 +472,17 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
 
     func collectionView(_ collectionView: NSCollectionView, acceptDrop draggingInfo: NSDraggingInfo, indexPath: IndexPath, dropOperation: NSCollectionView.DropOperation) -> Bool {
         var directory = host?.model.path.fileURL ?? URL(filePath: "/")
+        var folder: FileItem?
         if dropOperation == .on, let target = item(at: indexPath.item), target.isFolder {
             directory = target.url
+            folder = target
         }
         let operation = DragSupport.operation(for: draggingInfo, to: directory)
         guard !operation.isEmpty else { return false }
+        DropAnimation.run(draggingInfo, in: collectionView) { [weak self] in
+            guard let self, let folder, let tile = self.tile(forPath: folder.path) else { return nil }
+            return DropAnimation.Target(view: tile.thumbnail, rect: tile.thumbnail.bounds.insetBy(dx: -6, dy: -6), radius: 10, icon: tile.thumbnail)
+        }
         return host?.drop(DragSupport.urls(from: draggingInfo), into: directory, operation: operation) ?? false
     }
 }
