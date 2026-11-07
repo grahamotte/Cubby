@@ -48,6 +48,18 @@ enum FileActions {
         }
     }
 
+    static func rename(_ renames: [Transfer], completion: (([URL]) -> Void)? = nil) {
+        let renames = renames.filter { $0.source.lastPathComponent != $0.destination.lastPathComponent }
+        guard !renames.isEmpty else { return }
+        let sources = renames.map(\.source)
+        run(HistoryEntry(.rename, items: sources, target: renames.count == 1 ? renames[0].destination.lastPathComponent : nil), change: PendingChange(removed: sources, added: renames)) { $0.rename(renames) } completion: { result in
+            for transfer in result.transfers {
+                AppState.shared.folderMoved(from: transfer.source.standardizedFileURL.path, to: transfer.destination.standardizedFileURL.path)
+            }
+            completion?(result.transfers.map(\.destination))
+        }
+    }
+
     static func duplicate(_ urls: [URL], completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
         run(HistoryEntry(.duplicate, items: urls)) { $0.duplicate(urls) } completion: { result in

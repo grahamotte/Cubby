@@ -229,3 +229,123 @@ final class ThemedSearchField: NSSearchField {
         needsDisplay = true
     }
 }
+
+final class ThemedFieldCell: NSTextFieldCell {
+    override func drawingRect(forBounds rect: NSRect) -> NSRect {
+        let height = (font ?? NSFont.systemFont(ofSize: 13)).boundingRectForFont.height.rounded(.up)
+        return NSRect(x: rect.minX + 8, y: (rect.midY - height / 2).rounded(), width: max(rect.width - 16, 0), height: height)
+    }
+
+    override func edit(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText, delegate: Any?, event: NSEvent?) {
+        super.edit(withFrame: drawingRect(forBounds: rect), in: controlView, editor: textObj, delegate: delegate, event: event)
+    }
+
+    override func select(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText, delegate: Any?, start selStart: Int, length selLength: Int) {
+        super.select(withFrame: drawingRect(forBounds: rect), in: controlView, editor: textObj, delegate: delegate, start: selStart, length: selLength)
+    }
+}
+
+final class ThemedField: NSTextField {
+    override class var cellClass: AnyClass? {
+        get { ThemedFieldCell.self }
+        set {}
+    }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        isBezeled = false
+        isBordered = false
+        drawsBackground = false
+        focusRingType = .none
+        isEditable = true
+        isSelectable = true
+        font = .systemFont(ofSize: 13)
+        textColor = Theme.text
+        cell?.isScrollable = true
+        cell?.wraps = false
+        cell?.lineBreakMode = .byClipping
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: 26)
+    }
+
+    override var placeholderString: String? {
+        didSet {
+            placeholderAttributedString = placeholderString.map {
+                NSAttributedString(string: $0, attributes: [.foregroundColor: Theme.tertiaryText, .font: font ?? NSFont.systemFont(ofSize: 13)])
+            }
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
+        Theme.inactiveSelection.setFill()
+        path.fill()
+        (currentEditor() == nil ? Theme.divider : Theme.accent).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        cell?.drawInterior(withFrame: bounds, in: self)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became, let editor = currentEditor() as? NSTextView {
+            ThemedText.apply(to: editor)
+        }
+        needsDisplay = true
+        return became
+    }
+
+    override func textDidEndEditing(_ notification: Notification) {
+        super.textDidEndEditing(notification)
+        needsDisplay = true
+    }
+}
+
+final class ThemedButton: NSButton {
+    var isPrimary = false {
+        didSet { needsDisplay = true }
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: max(titleText.size().width + 28, 80), height: 28)
+    }
+
+    override var isEnabled: Bool {
+        didSet { needsDisplay = true }
+    }
+
+    private var titleText: NSAttributedString {
+        NSAttributedString(string: title, attributes: [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: isPrimary ? Theme.accentText : Theme.text,
+        ])
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
+        (isPrimary ? Theme.accent : Theme.inactiveSelection).setFill()
+        path.fill()
+        if !isPrimary {
+            Theme.divider.setStroke()
+            path.lineWidth = 1
+            path.stroke()
+        }
+        if isHighlighted {
+            Theme.text.withAlphaComponent(0.08).setFill()
+            path.fill()
+        }
+        let text = titleText
+        let size = text.size()
+        text.draw(at: NSPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2))
+        if !isEnabled {
+            Theme.content.withAlphaComponent(0.5).setFill()
+            path.fill()
+        }
+    }
+}

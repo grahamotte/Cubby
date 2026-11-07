@@ -59,6 +59,8 @@ final class FileHistoryTests: XCTestCase {
         XCTAssertEqual(finished(HistoryEntry(.moveBack, items: files("a", in: projects), destination: downloads)).summary, "Moved a back to Downloads")
         XCTAssertEqual(finished(HistoryEntry(.duplicate, items: files("a", "b"))).summary, "Duplicated 2 items in Downloads")
         XCTAssertEqual(HistoryEntry(.rename, items: files("a.txt"), target: "b.txt", state: .finished).summary, "Renamed a.txt to b.txt")
+        XCTAssertEqual(HistoryEntry(.rename, items: files("a", "b"), state: .finished).summary, "Renamed 2 items in Downloads")
+        XCTAssertEqual(HistoryEntry(.rename, items: files("a", "b")).summary, "Renaming 2 items in Downloads")
         XCTAssertEqual(HistoryEntry(.newFolder, items: files("untitled folder"), state: .finished).summary, "Created folder untitled folder in Downloads")
         XCTAssertEqual(HistoryEntry(.newFile, items: files("untitled.txt"), state: .finished).summary, "Created file untitled.txt in Downloads")
         XCTAssertEqual(finished(HistoryEntry(.newFolderWithItems, items: files("a", "b"), destination: downloads.appending(path: "New Folder With Items"), target: "New Folder With Items")).summary, "Moved 2 items into new folder New Folder With Items")

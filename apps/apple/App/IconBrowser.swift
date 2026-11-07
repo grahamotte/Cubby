@@ -392,6 +392,9 @@ class TileBrowser: NSViewController, FileBrowser, NSCollectionViewDataSource, NS
             if selectedItems.count == 1, let item = selectedItems.first {
                 beginRename(path: item.path)
                 return true
+            } else if selectedItems.count > 1 {
+                host?.bulkRename(selectedItems)
+                return true
             }
         case .previewItem:
             host?.toggleQuickLook()

@@ -24,7 +24,7 @@ extension HistoryEntry {
             let sources = (inputs ?? []).map { URL(filePath: $0) }
             entry = HistoryEntry(.putBack, items: sources, destination: HistoryEntry.folder(of: sources))
         case .rename:
-            entry = HistoryEntry(.rename, items: outputURLs, target: inputs?.first.map { URL(filePath: $0).lastPathComponent })
+            entry = HistoryEntry(.rename, items: outputURLs, target: outputURLs.count == 1 ? inputs?.first.map { URL(filePath: $0).lastPathComponent } : nil)
         case .move, .newFolderWithItems:
             entry = HistoryEntry(.moveBack, items: outputURLs, destination: HistoryEntry.folder(of: (inputs ?? []).map { URL(filePath: $0) }))
         case .copy, .duplicate, .newFolder, .newFile, .compress, .putBack, .moveBack:

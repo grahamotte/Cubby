@@ -68,6 +68,22 @@ final class HistoryUndoTests: XCTestCase {
         XCTAssertFalse(exists(renamed))
     }
 
+    func testUndoesABulkRename() {
+        let root = makeTemporaryDirectory()
+        let files = [makeFile(root, "a.txt"), makeFile(root, "b.txt")]
+        let renames = files.map { Transfer(source: $0, destination: root.appending(path: "x-" + $0.lastPathComponent)) }
+        let operations = FileOperations()
+        let rename = entry(.rename, operations.rename(renames), items: files)
+
+        XCTAssertEqual(rename.outputs?.count, 2)
+        XCTAssertEqual(rename.undoEntry.summary, "Renaming 2 items in \(root.lastPathComponent)")
+        XCTAssertNil(rename.undoEntry.target)
+        XCTAssertNil(rename.undoPreflight())
+        XCTAssertTrue(rename.undo(with: operations).errors.isEmpty)
+        XCTAssertTrue(files.allSatisfy(exists))
+        XCTAssertFalse(renames.contains { exists($0.destination) })
+    }
+
     func testUndoesACaseOnlyRename() throws {
         let root = makeTemporaryDirectory()
         let file = makeFile(root, "name")

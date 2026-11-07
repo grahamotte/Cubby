@@ -13,6 +13,7 @@ let package = Package(
                 "AppState.swift",
                 "Assets.xcassets",
                 "BrowserWindowController.swift",
+                "BulkRenameController.swift",
                 "ColumnBrowser.swift",
                 "ContextMenu.swift",
                 "CubbyDebugCommands.swift",
@@ -40,6 +41,7 @@ let package = Package(
             sources: [
                 "AppConfig.swift",
                 "Archive.swift",
+                "BulkRename.swift",
                 "ConfigStore.swift",
                 "CrumbFit.swift",
                 "CubbyPaths.swift",
