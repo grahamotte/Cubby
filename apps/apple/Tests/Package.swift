@@ -17,6 +17,7 @@ let package = Package(
                 "ContextMenu.swift",
                 "CubbyDebugCommands.swift",
                 "DebugHooks.swift",
+                "DropAnimation.swift",
                 "Cubby.entitlements",
                 "CubbyMain.swift",
                 "FileActions.swift",

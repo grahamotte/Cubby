@@ -28,6 +28,21 @@ final class FileOutlineView: NSOutlineView {
         super.mouseDown(with: event)
     }
 
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        browser?.dragEntered()
+        return super.draggingEntered(sender)
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        super.draggingExited(sender)
+        browser?.restoreDragExpansion(ending: true)
+    }
+
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        super.draggingEnded(sender)
+        browser?.restoreDragExpansion(ending: true)
+    }
+
     override func makeView(withIdentifier identifier: NSUserInterfaceItemIdentifier, owner: Any?) -> NSView? {
         let view = super.makeView(withIdentifier: identifier, owner: owner)
         if identifier == NSOutlineView.disclosureButtonIdentifier {
@@ -84,6 +99,8 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     private var applyingSelection = false
     private var applyingColumns = false
     private var counter: FolderCounter?
+    private var dragging = false
+    private var dragExpanded: [FileItem] = []
 
     private var items: [FileItem] = []
 
@@ -399,6 +416,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     func outlineViewItemWillExpand(_ notification: Notification) {
         guard let item = notification.userInfo?["NSObject"] as? FileItem else { return }
+        if dragging { dragExpanded.append(item) }
         host?.model.expand(item)
     }
 
@@ -456,6 +474,28 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
 
     func outlineView(_ outlineView: NSOutlineView, draggingSession session: NSDraggingSession, willBeginAt screenPoint: NSPoint, forItems draggedItems: [Any]) {
         DragSupport.showCountOnly(session, count: draggedItems.count, from: outlineView, at: screenPoint)
+        DropAnimation.trackSource(draggedItems.compactMap { ($0 as? FileItem)?.url }) { [weak self] path in
+            guard let self else { return nil }
+            return DropAnimation.icon(row: self.row(forPath: path), in: self.outlineView, column: self.nameColumn)
+        }
+    }
+
+    func dragEntered() {
+        dragging = true
+    }
+
+    func restoreDragExpansion(ending: Bool) {
+        if ending { dragging = false }
+        let items = dragExpanded.reversed().filter { outlineView.isItemExpanded($0) }
+        dragExpanded = []
+        guard !items.isEmpty else { return }
+        let anchor = scrollAnchor()
+        items.forEach { outlineView.collapseItem($0) }
+        if let anchor { restoreScroll(anchor) }
+    }
+
+    private var nameColumn: Int {
+        outlineView.column(withIdentifier: NSUserInterfaceItemIdentifier("name"))
     }
 
     func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
@@ -473,7 +513,13 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
         let directory = (item as? FileItem)?.url ?? URL(filePath: host?.model.path ?? "/", directoryHint: .isDirectory)
         let operation = DragSupport.operation(for: info, to: directory)
+        restoreDragExpansion(ending: false)
         guard !operation.isEmpty else { return false }
+        let path = (item as? FileItem)?.path
+        DropAnimation.run(info, in: outlineView) { [weak self] in
+            guard let self, let path else { return nil }
+            return DropAnimation.row(self.row(forPath: path), in: self.outlineView, column: self.nameColumn)
+        }
         return host?.drop(DragSupport.urls(from: info), into: directory, operation: operation) ?? false
     }
 

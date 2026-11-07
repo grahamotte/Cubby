@@ -622,6 +622,9 @@ final class SidebarController: NSViewController, NSOutlineViewDataSource, NSOutl
         if let target, target.kind == .folder, index == NSOutlineViewDropOnItemIndex, let url = target.url {
             let operation = DragSupport.operation(for: info, to: url)
             guard !operation.isEmpty else { return false }
+            DropAnimation.run(info, in: outlineView) { [weak outlineView] in
+                outlineView.flatMap { DropAnimation.row($0.row(forItem: target), in: $0) }
+            }
             FileActions.transfer(urls, to: url, copy: operation == .copy)
             return true
         }
