@@ -46,31 +46,17 @@ struct BulkRename: Equatable {
 
     var find = ""
     var replace = ""
-    var regex = false
     var prefix = ""
     var suffix = ""
-    var removeFirst = 0
-    var removeLast = 0
     var numbering = Numbering.none
     var start = 1
     var separator = " "
     var letterCase = LetterCase.keep
 
-    var regexError: String? {
-        guard regex, !find.isEmpty else { return nil }
-        do {
-            _ = try NSRegularExpression(pattern: find)
-            return nil
-        } catch {
-            return "The regular expression is invalid."
-        }
-    }
-
     func name(for item: Item, index: Int, total: Int) -> String {
         let original = item.url.lastPathComponent
         let (base, ext) = item.splitsExtension ? FileNaming.split(original) : (original, "")
-        var name = String(base.dropFirst(max(removeFirst, 0)).dropLast(max(removeLast, 0)))
-        name = replaced(name)
+        var name = find.isEmpty ? base : base.replacingOccurrences(of: find, with: replace)
         switch letterCase {
         case .keep: break
         case .lower: name = name.lowercased()
@@ -102,7 +88,7 @@ struct BulkRename: Equatable {
             guard name != original else { return Row(url: item.url, name: name, problem: nil) }
             let destination = item.url.deletingLastPathComponent().appending(path: name)
             let key = Self.key(destination)
-            var problem = regexError ?? FileNaming.validationError(for: name)
+            var problem = FileNaming.validationError(for: name)
             if problem == nil, FileNaming.becomesHidden(renaming: original, to: name) {
                 problem = "Names that begin with “.” are hidden."
             } else if problem == nil, counts[key, default: 0] > 1 {
@@ -116,12 +102,5 @@ struct BulkRename: Equatable {
 
     static func key(_ url: URL) -> String {
         url.standardizedFileURL.path.lowercased()
-    }
-
-    private func replaced(_ name: String) -> String {
-        guard !find.isEmpty else { return name }
-        guard regex else { return name.replacingOccurrences(of: find, with: replace) }
-        guard let expression = try? NSRegularExpression(pattern: find) else { return name }
-        return expression.stringByReplacingMatches(in: name, range: NSRange(name.startIndex..., in: name), withTemplate: replace)
     }
 }

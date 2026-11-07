@@ -18,10 +18,12 @@ final class BulkRenameRow: NSTableCellView {
             view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             addSubview(view)
         }
+        arrow.setContentCompressionResistancePriority(.required, for: .horizontal)
         NSLayoutConstraint.activate([
             original.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             original.centerYAnchor.constraint(equalTo: centerYAnchor),
             original.trailingAnchor.constraint(lessThanOrEqualTo: arrow.leadingAnchor, constant: -8),
+            arrow.widthAnchor.constraint(equalToConstant: 12),
             arrow.centerXAnchor.constraint(equalTo: centerXAnchor),
             arrow.centerYAnchor.constraint(equalTo: centerYAnchor),
             renamed.leadingAnchor.constraint(equalTo: arrow.trailingAnchor, constant: 8),
@@ -54,15 +56,12 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
     private var rows: [BulkRename.Row] = []
     private let findField = BulkRenameController.field("Text to find")
     private let replaceField = BulkRenameController.field("Replace with")
-    private let prefixField = BulkRenameController.field("Add before")
-    private let suffixField = BulkRenameController.field("Add after")
-    private let removeFirstField = BulkRenameController.field("0")
-    private let removeLastField = BulkRenameController.field("0")
+    private let prefixField = BulkRenameController.field("Text to add")
+    private let suffixField = BulkRenameController.field("Text to add")
     private let startField = BulkRenameController.field("1")
-    private let separatorField = BulkRenameController.field("")
+    private let separatorField = BulkRenameController.field("None")
     private let numberingPopup = BulkRenameController.popup(BulkRename.Numbering.allCases.map(\.title))
     private let casePopup = BulkRenameController.popup(BulkRename.LetterCase.allCases.map(\.title))
-    private let regexSwitch = ThemedSwitch()
     private let tableView = NSTableView()
     private let status = NSTextField(labelWithString: "")
     private let renameButton = ThemedButton(title: "Rename", target: nil, action: nil)
@@ -98,63 +97,51 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
         label.font = .systemFont(ofSize: 12, weight: .medium)
         label.textColor = Theme.secondaryText
         label.alignment = .right
+        label.setContentHuggingPriority(.required, for: .horizontal)
         return label
     }
 
     override func loadView() {
         separatorField.stringValue = rename.separator
         startField.stringValue = String(rename.start)
-        for field in [findField, replaceField, prefixField, suffixField, removeFirstField, removeLastField, startField, separatorField] {
+        for field in [findField, replaceField, prefixField, suffixField, startField, separatorField] {
             field.delegate = self
         }
-        for field in [removeFirstField, removeLastField, startField] {
-            field.alignment = .right
-        }
+        startField.alignment = .right
         for popup in [numberingPopup, casePopup] {
             popup.target = self
             popup.action = #selector(optionsChanged(_:))
         }
-        regexSwitch.target = self
-        regexSwitch.action = #selector(optionsChanged(_:))
-        regexSwitch.setAccessibilityLabel("Regular Expression")
 
         let header = NSTextField(labelWithString: "Rename \(items.count.formatted()) Items")
         header.font = .systemFont(ofSize: 13, weight: .semibold)
         header.textColor = Theme.text
 
-        let regexLabel = NSTextField(labelWithString: "Regular expression")
-        regexLabel.font = .systemFont(ofSize: 12)
-        regexLabel.textColor = Theme.secondaryText
-        let regexRow = NSStackView(views: [regexSwitch, regexLabel])
-        regexRow.spacing = 8
-
-        let numbers = NSStackView(views: [Self.label("Start"), startField, Self.label("Separator"), separatorField])
+        let numbers = NSStackView(views: [numberingPopup, Self.label("Start"), startField, Self.label("Separator"), separatorField])
         numbers.spacing = 8
-        let removes = NSStackView(views: [removeFirstField, Self.label("Remove Last"), removeLastField])
-        removes.spacing = 8
+        numbers.setCustomSpacing(16, after: numberingPopup)
 
         let grid = NSGridView(views: [
-            [Self.label("Find"), findField],
-            [Self.label("Replace"), replaceField],
-            [NSGridCell.emptyContentView, regexRow],
-            [Self.label("Add Before"), prefixField],
-            [Self.label("Add After"), suffixField],
-            [Self.label("Remove First"), removes],
-            [Self.label("Number"), numberingPopup],
-            [NSGridCell.emptyContentView, numbers],
+            [Self.label("Find"), findField, Self.label("Replace"), replaceField],
+            [Self.label("Add Before"), prefixField, Self.label("Add After"), suffixField],
+            [Self.label("Number"), numbers],
             [Self.label("Case"), casePopup],
         ])
-        grid.rowSpacing = 8
-        grid.columnSpacing = 12
+        grid.rowSpacing = 10
+        grid.columnSpacing = 10
         grid.column(at: 0).xPlacement = .trailing
-        grid.rowAlignment = .firstBaseline
+        grid.column(at: 2).xPlacement = .trailing
+        grid.column(at: 2).leadingPadding = 6
+        grid.rowAlignment = .none
         for index in 0..<grid.numberOfRows {
             grid.row(at: index).yPlacement = .center
+            grid.row(at: index).height = 26
         }
-        grid.row(at: 2).topPadding = -2
-        grid.row(at: 3).topPadding = 8
-        grid.row(at: 6).topPadding = 8
-        grid.row(at: 8).topPadding = 8
+        for row in 2...3 {
+            grid.mergeCells(inHorizontalRange: NSRange(location: 1, length: 3), verticalRange: NSRange(location: row, length: 1))
+        }
+        grid.cell(for: numbers)?.xPlacement = .leading
+        grid.cell(for: casePopup)?.xPlacement = .leading
         grid.translatesAutoresizingMaskIntoConstraints = false
 
         let card = CardView()
@@ -202,7 +189,7 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
             root.addSubview(view)
         }
         NSLayoutConstraint.activate([
-            root.widthAnchor.constraint(equalToConstant: 560),
+            root.widthAnchor.constraint(equalToConstant: 540),
             header.topAnchor.constraint(equalTo: root.topAnchor, constant: 16),
             header.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 20),
             card.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 12),
@@ -212,12 +199,9 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
             grid.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
             grid.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             grid.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            findField.widthAnchor.constraint(equalToConstant: 400),
             replaceField.widthAnchor.constraint(equalTo: findField.widthAnchor),
             prefixField.widthAnchor.constraint(equalTo: findField.widthAnchor),
             suffixField.widthAnchor.constraint(equalTo: findField.widthAnchor),
-            removeFirstField.widthAnchor.constraint(equalToConstant: 56),
-            removeLastField.widthAnchor.constraint(equalToConstant: 56),
             startField.widthAnchor.constraint(equalToConstant: 56),
             separatorField.widthAnchor.constraint(equalToConstant: 56),
             preview.topAnchor.constraint(equalTo: card.bottomAnchor, constant: 12),
@@ -254,18 +238,11 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
         update()
     }
 
-    private static func count(_ field: NSTextField) -> Int {
-        max(Int(field.stringValue.trimmingCharacters(in: .whitespaces)) ?? 0, 0)
-    }
-
     private func update() {
         rename.find = findField.stringValue
         rename.replace = replaceField.stringValue
-        rename.regex = regexSwitch.state == .on
         rename.prefix = prefixField.stringValue
         rename.suffix = suffixField.stringValue
-        rename.removeFirst = Self.count(removeFirstField)
-        rename.removeLast = Self.count(removeLastField)
         rename.numbering = BulkRename.Numbering.allCases[max(numberingPopup.indexOfSelectedItem, 0)]
         rename.start = Int(startField.stringValue.trimmingCharacters(in: .whitespaces)).map { max($0, 0) } ?? 1
         rename.separator = separatorField.stringValue
@@ -279,17 +256,14 @@ final class BulkRenameController: NSViewController, NSTextFieldDelegate, NSTable
         tableView.reloadData()
         let changed = rows.filter(\.changed).count
         let problems = rows.filter { $0.problem != nil }
-        if let error = rename.regexError {
-            status.stringValue = error
-            status.textColor = Theme.warning
-        } else if let first = problems.first {
+        if let first = problems.first {
             status.stringValue = problems.count == 1 ? "“\(first.name)”: \(first.problem ?? "")" : "\(problems.count.formatted()) names have problems."
             status.textColor = Theme.warning
         } else {
             status.stringValue = changed == 0 ? "No names change yet." : changed == 1 ? "1 name changes." : "\(changed.formatted()) names change."
             status.textColor = Theme.secondaryText
         }
-        renameButton.isEnabled = changed > 0 && problems.isEmpty && rename.regexError == nil
+        renameButton.isEnabled = changed > 0 && problems.isEmpty
     }
 
     @objc private func cancel(_ sender: Any?) {

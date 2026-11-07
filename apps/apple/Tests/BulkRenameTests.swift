@@ -26,30 +26,11 @@ final class BulkRenameTests: XCTestCase {
         XCTAssertEqual(names(rename, items("txt notes.txt", "Txt.txt")), ["md notes.txt", "Txt.txt"])
     }
 
-    func testReplacesWithRegularExpressions() {
-        var rename = BulkRename()
-        rename.regex = true
-        rename.find = #"IMG_(\d+)"#
-        rename.replace = "Photo $1"
-        XCTAssertEqual(names(rename, items("IMG_0042.jpg", "other.jpg")), ["Photo 0042.jpg", "other.jpg"])
-        XCTAssertNil(rename.regexError)
-
-        rename.find = "("
-        XCTAssertEqual(rename.regexError, "The regular expression is invalid.")
-        XCTAssertEqual(names(rename, items("a(b.txt")), ["a(b.txt"])
-        rename.regex = false
-        rename.replace = ""
-        XCTAssertNil(rename.regexError)
-        XCTAssertEqual(names(rename, items("a(b.txt")), ["ab.txt"])
-    }
-
-    func testAddsAndRemovesText() {
+    func testAddsTextAroundTheName() {
         var rename = BulkRename()
         rename.prefix = "2026 "
         rename.suffix = " final"
-        rename.removeFirst = 2
-        rename.removeLast = 1
-        XCTAssertEqual(names(rename, items("x-reportZ.pdf", "ab")), ["2026 report final.pdf", "2026  final"])
+        XCTAssertEqual(names(rename, items("report.pdf", "ab")), ["2026 report final.pdf", "2026 ab final"])
     }
 
     func testKeepsFolderNamesWhole() {
@@ -88,36 +69,34 @@ final class BulkRenameTests: XCTestCase {
 
     func testFlagsProblems() {
         var rename = BulkRename()
-        rename.regex = true
-        rename.find = "^.*$"
-        rename.replace = "same"
-        let rows = rename.plan(items("a.txt", "b.txt"), exists: { _ in false })
-        XCTAssertEqual(rows.map(\.problem), ["Another item gets this name.", "Another item gets this name."])
+        rename.find = "1"
+        rename.replace = "2"
+        let rows = rename.plan(items("a1.txt", "a2.txt"), exists: { _ in true })
+        XCTAssertEqual(rows.map(\.problem), ["Another item gets this name.", nil])
 
         rename.replace = "taken"
-        XCTAssertEqual(rename.plan(items("a.txt"), exists: { $0 == "/d/taken.txt" }).first?.problem, "An item with this name already exists.")
+        XCTAssertEqual(rename.plan(items("1.txt"), exists: { $0 == "/d/taken.txt" }).first?.problem, "An item with this name already exists.")
 
         rename.replace = "a:b"
-        XCTAssertEqual(rename.plan(items("a.txt"), exists: { _ in false }).first?.problem, "The name can't contain “:”.")
+        XCTAssertEqual(rename.plan(items("1.txt"), exists: { _ in false }).first?.problem, "The name can't contain “:”.")
 
-        rename.find = "^"
-        rename.replace = "."
-        XCTAssertEqual(rename.plan(items("a.txt"), exists: { _ in false }).first?.problem, "Names that begin with “.” are hidden.")
+        var hidden = BulkRename()
+        hidden.prefix = "."
+        XCTAssertEqual(hidden.plan(items("a.txt"), exists: { _ in false }).first?.problem, "Names that begin with “.” are hidden.")
     }
 
-    func testAllowsSwapsAndCaseChanges() {
+    func testAllowsChainsAndCaseChanges() {
         var rename = BulkRename()
         rename.letterCase = .upper
         let rows = rename.plan(items("c.txt"), exists: { _ in true })
         XCTAssertEqual(rows.map(\.name), ["C.txt"])
         XCTAssertNil(rows[0].problem)
 
-        var swap = BulkRename()
-        swap.regex = true
-        swap.find = "^.*$"
-        swap.numbering = .before
-        let swapRows = swap.plan(items("2.txt", "1.txt"), exists: { _ in true })
-        XCTAssertEqual(swapRows.map(\.name), ["1.txt", "2.txt"])
-        XCTAssertEqual(swapRows.compactMap(\.problem), [])
+        var chain = BulkRename()
+        chain.find = "1"
+        chain.replace = "11"
+        let chainRows = chain.plan(items("1.txt", "11.txt"), exists: { ["/d/1.txt", "/d/11.txt"].contains($0) })
+        XCTAssertEqual(chainRows.map(\.name), ["11.txt", "1111.txt"])
+        XCTAssertEqual(chainRows.compactMap(\.problem), [])
     }
 }
