@@ -6,8 +6,7 @@ enum FileActions {
 
     static func transfer(_ urls: [URL], to directory: URL, copy: Bool, completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
-        let title = "\(copy ? "Copying" : "Moving") \(itemCount(urls.count))…"
-        run(title, change: copy ? .copy(urls, to: directory) : .move(urls, to: directory)) { operations in
+        run(HistoryEntry(copy ? .copy : .move, items: urls, destination: directory), change: copy ? .copy(urls, to: directory) : .move(urls, to: directory)) { operations in
             var applyToAll: ConflictChoice?
             let resolve: (URL) -> ConflictChoice = { destination in
                 if let applyToAll { return applyToAll }
@@ -31,11 +30,12 @@ enum FileActions {
 
     static func trash(_ urls: [URL], undoable: Bool = true) {
         guard !urls.isEmpty else { return }
-        run("Moving \(itemCount(urls.count)) to the Trash…", change: .remove(urls)) { $0.trash(urls) } completion: { result in
+        run(HistoryEntry(.trash, items: urls), change: .remove(urls)) { $0.trash(urls) } completion: { result in
             guard undoable, !result.transfers.isEmpty else { return }
             let transfers = result.transfers
             registerUndo("Move to Trash") {
-                run("Putting Back \(itemCount(transfers.count))…") { $0.moveBack(transfers) } completion: { _ in }
+                let sources = transfers.map(\.source)
+                run(HistoryEntry(.putBack, items: sources, destination: HistoryEntry.folder(of: sources))) { $0.moveBack(transfers) } completion: { _ in }
             }
         }
     }
@@ -44,6 +44,7 @@ enum FileActions {
         do {
             let renamed = try FileOperations().rename(url, to: name)
             guard renamed != url else { return url }
+            TaskQueue.shared.record(HistoryEntry(.rename, items: [url], target: renamed.lastPathComponent, state: .finished))
             AppState.shared.folderMoved(from: url.standardizedFileURL.path, to: renamed.standardizedFileURL.path)
             if undoable {
                 registerUndo("Rename") {
@@ -52,6 +53,7 @@ enum FileActions {
             }
             return renamed
         } catch {
+            TaskQueue.shared.record(HistoryEntry(.rename, items: [url], target: name, state: .failed))
             present(error)
             return nil
         }
@@ -59,26 +61,26 @@ enum FileActions {
 
     static func duplicate(_ urls: [URL], completion: (([URL]) -> Void)? = nil) {
         guard !urls.isEmpty else { return }
-        run("Duplicating \(itemCount(urls.count))…") { $0.duplicate(urls) } completion: { result in
+        run(HistoryEntry(.duplicate, items: urls)) { $0.duplicate(urls) } completion: { result in
             registerUndo(result.transfers, copy: true)
             completion?(result.transfers.map(\.destination))
         }
     }
 
     static func newFolder(in directory: URL) -> URL? {
-        create { try FileOperations().makeFolder(in: directory) }
+        create(.newFolder) { try FileOperations().makeFolder(in: directory) }
     }
 
     static func newFile(in directory: URL) -> URL? {
-        create { try FileOperations().makeFile(in: directory) }
+        create(.newFile) { try FileOperations().makeFile(in: directory) }
     }
 
     static func newFolder(with urls: [URL], in directory: URL, completion: @escaping (URL) -> Void) {
         guard let folder = try? FileOperations().makeFolder(in: directory, name: "New Folder With Items") else { return }
-        run("Moving \(itemCount(urls.count))…", change: .move(urls, to: folder)) { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { result in
+        run(HistoryEntry(.newFolderWithItems, items: urls, destination: folder, target: folder.lastPathComponent), change: .move(urls, to: folder)) { $0.move(urls, to: folder) { _ in .keepBoth } } completion: { result in
             let transfers = result.transfers
             registerUndo("New Folder With Selection") {
-                run("Moving \(itemCount(transfers.count)) Back…", change: .moveBack(transfers)) { operations in
+                run(moveBackEntry(transfers), change: .moveBack(transfers)) { operations in
                     var result = operations.moveBack(transfers)
                     if (try? FileManager.default.contentsOfDirectory(atPath: folder.path))?.isEmpty == true {
                         do { try FileManager.default.removeItem(at: folder) } catch { result.errors.append(error) }
@@ -92,7 +94,7 @@ enum FileActions {
 
     static func compress(_ urls: [URL], completion: @escaping (URL) -> Void) {
         guard let archive = Archive.plan(for: urls), let first = urls.first else { return }
-        run("Compressing \(itemCount(urls.count))…") { _ in
+        run(HistoryEntry(.compress, items: urls, destination: archive.destination.deletingLastPathComponent(), target: archive.destination.lastPathComponent)) { _ in
             let process = Process()
             process.executableURL = archive.executable
             process.arguments = archive.arguments
@@ -168,18 +170,15 @@ enum FileActions {
         alert.runModal()
     }
 
-    static func itemCount(_ count: Int) -> String {
-        count == 1 ? "1 item" : "\(count.formatted()) items"
-    }
-
     private static func applicationURL(named name: String) -> URL? {
         let candidates = ["/Applications/\(name).app", "/System/Applications/Utilities/\(name).app", "/System/Applications/\(name).app", NSHomeDirectory() + "/Applications/\(name).app"]
         return candidates.first { FileManager.default.fileExists(atPath: $0) }.map { URL(filePath: $0) }
     }
 
-    private static func create(_ make: () throws -> URL) -> URL? {
+    private static func create(_ kind: HistoryEntry.Kind, _ make: () throws -> URL) -> URL? {
         do {
             let url = try make()
+            TaskQueue.shared.record(HistoryEntry(kind, items: [url], state: .finished))
             registerUndo(url.hasDirectoryPath ? "New Folder" : "New File") { trash([url], undoable: false) }
             return url
         } catch {
@@ -192,13 +191,13 @@ enum FileActions {
         guard !transfers.isEmpty else { return }
         registerUndo(copy ? "Copy" : "Move") {
             if copy {
-                run("Moving \(itemCount(transfers.count)) to the Trash…", change: .remove(transfers.map(\.destination))) { operations in
+                run(HistoryEntry(.trash, items: transfers.map(\.destination)), change: .remove(transfers.map(\.destination))) { operations in
                     var result = operations.trash(transfers.map(\.destination))
                     result.errors += operations.moveBack(replaced).errors
                     return result
                 } completion: { _ in }
             } else {
-                run("Moving \(itemCount(transfers.count)) Back…", change: .moveBack(transfers)) { operations in
+                run(moveBackEntry(transfers), change: .moveBack(transfers)) { operations in
                     var result = operations.moveBack(transfers)
                     result.errors += operations.moveBack(replaced).errors
                     return result
@@ -209,6 +208,10 @@ enum FileActions {
                 }
             }
         }
+    }
+
+    private static func moveBackEntry(_ transfers: [Transfer]) -> HistoryEntry {
+        HistoryEntry(.moveBack, items: transfers.map(\.destination), destination: HistoryEntry.folder(of: transfers.map(\.source)))
     }
 
     private static func registerUndo(_ name: String, _ handler: @escaping () -> Void) {
@@ -238,8 +241,8 @@ enum FileActions {
         }
     }
 
-    private static func run(_ title: String, change: PendingChange = PendingChange(), work: @escaping (FileOperations) -> OperationResult, completion: @escaping (OperationResult) -> Void) {
-        TaskQueue.shared.enqueue(title, change: change, work: work) { result in
+    private static func run(_ entry: HistoryEntry, change: PendingChange = PendingChange(), work: @escaping (FileOperations) -> OperationResult, completion: @escaping (OperationResult) -> Void) {
+        TaskQueue.shared.enqueue(entry, change: change, work: work) { result in
             completion(result)
             if let summary = result.errorSummary {
                 let alert = NSAlert()
