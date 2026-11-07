@@ -2,6 +2,13 @@
   "domain": "cubby.directory",
   "githubRepo": "git@github.com:grahamotte/Cubby.git",
   "database": "cubby",
+  "operatorOnlyEnvKeys": [
+    "APPLE_*",
+    "CLOUDFLARE_TOKEN",
+    "DEPLOY_PASSWORD",
+    "DEPLOY_SSH_KEY_*",
+    "DIGITAL_OCEAN_TOKEN"
+  ],
   "site": {
     "title": "Cubby",
     "description": "A fast, simple file manager for macOS.",
