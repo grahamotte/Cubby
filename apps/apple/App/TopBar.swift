@@ -38,7 +38,7 @@ enum PlainButton {
 final class TopBar: NSView {
     let searchField = ThemedSearchField()
     var onNavigate: ((String) -> Void)?
-    private let crumbs = NSStackView()
+    private let crumbs = CrumbsView()
     private lazy var filterButton = PlainButton.make("magnifyingglass", "Filter", target: nil, action: #selector(BrowserWindowController.performFindPanelAction(_:)))
     private lazy var sortButton = PlainButton.make("arrow.up.arrow.down", "Sort", target: self, action: #selector(showSortMenu(_:)))
     private lazy var modeButton = PlainButton.make(ViewMode.list.symbolName, "View", target: self, action: #selector(showModeMenu(_:)))
@@ -63,9 +63,6 @@ final class TopBar: NSView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        crumbs.orientation = .horizontal
-        crumbs.spacing = 4
-        crumbs.setClippingResistancePriority(.defaultLow, for: .horizontal)
         crumbs.translatesAutoresizingMaskIntoConstraints = false
 
         searchField.controlSize = .small
@@ -99,7 +96,7 @@ final class TopBar: NSView {
     }
 
     private func rebuildCrumbs() {
-        crumbs.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        var views: [NSView] = []
         let paths = TopBar.ancestors(of: path)
         for (index, crumbPath) in paths.enumerated() {
             let isLast = index == paths.count - 1
@@ -107,22 +104,24 @@ final class TopBar: NSView {
                 let slash = NSTextField(labelWithString: "/")
                 slash.font = .systemFont(ofSize: 13)
                 slash.textColor = Theme.tertiaryText
-                slash.setContentCompressionResistancePriority(.required, for: .horizontal)
-                crumbs.addArrangedSubview(slash)
+                views.append(slash)
             }
             let name = crumbPath == "/" ? "Macintosh HD" : FileManager.default.displayName(atPath: crumbPath)
             let button = NSButton(title: name, target: self, action: #selector(crumbClicked(_:)))
             button.isBordered = false
             button.identifier = NSUserInterfaceItemIdentifier(crumbPath)
+            let truncating = NSMutableParagraphStyle()
+            truncating.lineBreakMode = .byTruncatingMiddle
             button.attributedTitle = NSAttributedString(string: name, attributes: [
                 .font: NSFont.systemFont(ofSize: 13, weight: isLast ? .medium : .regular),
                 .foregroundColor: isLast ? Theme.text : Theme.secondaryText,
+                .paragraphStyle: truncating,
             ])
-            button.cell?.lineBreakMode = .byTruncatingTail
+            button.cell?.lineBreakMode = .byTruncatingMiddle
             button.toolTip = crumbPath
-            button.setContentCompressionResistancePriority(isLast ? .defaultHigh : NSLayoutConstraint.Priority(rawValue: 250 + Float(index)), for: .horizontal)
-            crumbs.addArrangedSubview(button)
+            views.append(button)
         }
+        crumbs.items = views
     }
 
     static func ancestors(of path: String) -> [String] {
@@ -184,5 +183,56 @@ final class TopBar: NSView {
 
     private func popUp(_ menu: NSMenu, from button: NSButton) {
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.isFlipped ? button.bounds.height + 4 : -4), in: button)
+    }
+}
+
+final class CrumbsView: NSView {
+    private let spacing: CGFloat = 4
+    private var naturalWidths: [CGFloat] = []
+
+    var items: [NSView] = [] {
+        didSet {
+            oldValue.forEach { $0.removeFromSuperview() }
+            items.forEach { addSubview($0) }
+            naturalWidths = items.map { ceil($0.fittingSize.width) }
+            invalidateIntrinsicContentSize()
+            needsLayout = true
+        }
+    }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        setContentHuggingPriority(.required, for: .horizontal)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let height = items.map { ceil($0.fittingSize.height) }.max() ?? 0
+        return NSSize(width: naturalWidths.reduce(0, +) + gaps, height: height)
+    }
+
+    private var gaps: CGFloat {
+        spacing * CGFloat(max(items.count - 1, 0))
+    }
+
+    override func layout() {
+        super.layout()
+        let crumbIndices = items.indices.filter { items[$0] is NSButton }
+        let fixed = items.indices.filter { !(items[$0] is NSButton) }.reduce(CGFloat(0)) { $0 + naturalWidths[$1] }
+        let fitted = CrumbFit.widths(crumbIndices.map { naturalWidths[$0] }, available: bounds.width - fixed - gaps)
+        var widths = naturalWidths
+        for (index, width) in zip(crumbIndices, fitted) {
+            widths[index] = width
+        }
+        var x: CGFloat = 0
+        for (item, width) in zip(items, widths) {
+            let height = ceil(item.fittingSize.height)
+            item.frame = NSRect(x: x, y: floor((bounds.height - height) / 2), width: width, height: height)
+            x += width + spacing
+        }
     }
 }
