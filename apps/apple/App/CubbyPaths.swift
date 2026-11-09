@@ -2,10 +2,16 @@ import Foundation
 
 struct CubbyPaths {
     #if CUBBY_DEV
-    static let folderName = "cubby-dev"
+    static let folderName = devFolderName(bundleIdentifier: Bundle.main.bundleIdentifier)
     #else
     static let folderName = "cubby"
     #endif
+
+    static func devFolderName(bundleIdentifier: String?) -> String {
+        let components = bundleIdentifier?.split(separator: ".") ?? []
+        guard let debug = components.firstIndex(of: "debug"), debug + 1 < components.count else { return "cubby-dev" }
+        return (["cubby-dev"] + components[(debug + 1)...]).joined(separator: ".")
+    }
 
     let home: URL
     let configDirectory: URL
