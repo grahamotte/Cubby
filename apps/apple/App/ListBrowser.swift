@@ -40,11 +40,6 @@ final class FileOutlineView: NSOutlineView {
         browser?.restoreDragExpansion(ending: true)
     }
 
-    override func draggingEnded(_ sender: NSDraggingInfo) {
-        super.draggingEnded(sender)
-        browser?.restoreDragExpansion(ending: true)
-    }
-
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
         super.concludeDragOperation(sender)
         browser?.restoreDragExpansion(ending: true)
@@ -525,7 +520,7 @@ final class ListBrowser: NSViewController, FileBrowser, NSOutlineViewDataSource,
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
         let directory = (item as? FileItem)?.url ?? URL(filePath: host?.model.path ?? "/", directoryHint: .isDirectory)
         let operation = DragSupport.operation(for: info, to: directory)
-        restoreDragExpansion(ending: false)
+        restoreDragExpansion(ending: operation.isEmpty)
         guard !operation.isEmpty else { return false }
         let path = (item as? FileItem)?.path
         DropAnimation.run(info, in: outlineView) { [weak self] in
