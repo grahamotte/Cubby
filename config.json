@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.11.0",
+    "build": "0.11.1",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.11.0",
-    "whatsNew": "Each profile now remembers its own view settings for every folder, including list column order, widths, and visibility, and those settings follow a folder when it is renamed or moved. Moving or resizing list columns is now saved."
+    "version": "0.11.1",
+    "whatsNew": "Fixed an issue where dragging files in list view could leave three-finger swipes between Spaces unresponsive until Cubby quit."
   }
 }
