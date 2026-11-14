@@ -82,7 +82,8 @@ final class DirectoryModelTests: XCTestCase {
         let second = DirectoryModel(path: directory.path, view: view, visibility: .standard, countCache: cache)
         waitForChange(second) { second.start() }
         XCTAssertEqual(names(second.items), ["b", "a"])
-        XCTAssertFalse(cache.isCounting(few.path, visibility: .standard))
+        XCTAssertTrue(cache.isCounting(few.path, visibility: .standard))
+        waitForChange(second, where: { _ in names(second.items) == ["a", "b"] }) {}
         second.stop()
     }
 

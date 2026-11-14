@@ -81,8 +81,9 @@ final class FolderCounter {
     }
 
     private func refreshIfNeeded(_ path: String, entry: FolderCountCache.Entry) {
-        guard entry.stale || entry.countedAt < startedAt else { return }
-        let due = entry.countedAt.addingTimeInterval(cache.refreshInterval)
+        let visited = entry.countedAt < startedAt
+        guard entry.stale || visited else { return }
+        let due = visited ? entry.countedAt : entry.countedAt.addingTimeInterval(cache.refreshInterval)
         if due <= Date() {
             waiting.remove(path)
             cache.recount(path, visibility: visibility)
