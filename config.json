@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.11.1",
+    "build": "0.11.2",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.11.1",
-    "whatsNew": "Fixed an issue where dragging files in list view could leave three-finger swipes between Spaces unresponsive until Cubby quit."
+    "version": "0.11.2",
+    "whatsNew": "The Count column now remembers folder counts, so revisited folders show and sort by their counts right away, even after relaunching Cubby."
   }
 }
