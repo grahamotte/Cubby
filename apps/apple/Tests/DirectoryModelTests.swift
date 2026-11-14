@@ -51,7 +51,7 @@ final class DirectoryModelTests: XCTestCase {
         makeFile(few, "f")
         makeFolder(directory, "empty")
         makeFile(directory, "file.txt")
-        let model = DirectoryModel(path: directory.path, view: FolderView(mode: .list, sort: .count, ascending: false, iconSize: 80), visibility: .standard)
+        let model = DirectoryModel(path: directory.path, view: FolderView(mode: .list, sort: .count, ascending: false, iconSize: 80), visibility: .standard, countCache: FolderCountCache(refreshInterval: 0))
         waitForChange(model, where: { _ in names(model.items) == ["many", "few", "empty", "file.txt"] }) { model.start() }
         XCTAssertNotNil(model.counter)
 
@@ -64,6 +64,26 @@ final class DirectoryModelTests: XCTestCase {
         }
         model.stop()
         XCTAssertNil(model.counter)
+    }
+
+    func testSortsByCachedCountsOnFirstLoad() {
+        let directory = makeTemporaryDirectory()
+        let many = makeFolder(directory, "a")
+        for index in 0..<3 { makeFile(many, "f\(index)") }
+        let few = makeFolder(directory, "b")
+        makeFile(few, "f")
+        let cache = FolderCountCache()
+        let view = FolderView(mode: .list, sort: .count, ascending: true, iconSize: 80)
+        let first = DirectoryModel(path: directory.path, view: view, visibility: .standard, countCache: cache)
+        waitForChange(first, where: { _ in names(first.items) == ["b", "a"] }) { first.start() }
+        first.stop()
+
+        for index in 0..<5 { makeFile(few, "g\(index)") }
+        let second = DirectoryModel(path: directory.path, view: view, visibility: .standard, countCache: cache)
+        waitForChange(second) { second.start() }
+        XCTAssertEqual(names(second.items), ["b", "a"])
+        XCTAssertFalse(cache.isCounting(few.path, visibility: .standard))
+        second.stop()
     }
 
     func testReloadsWhenDirectoryChanges() {

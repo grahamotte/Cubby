@@ -1,6 +1,6 @@
 import Foundation
 
-struct Visibility: Equatable {
+struct Visibility: Hashable {
     static let dsStoreName = ".DS_Store"
     static let standard = Visibility(showHidden: false, showDSStore: false)
 

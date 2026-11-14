@@ -9,35 +9,37 @@ final class FolderCounter {
     var visibility: Visibility {
         didSet {
             guard visibility != oldValue else { return }
-            reset()
+            waiting = []
+            scheduleNotify()
         }
     }
 
-    private var counts: [String: Int] = [:]
-    private var pending: Set<String> = []
-    private var generation = 0
+    private let cache: FolderCountCache
+    private let startedAt = Date()
+    private var waiting: Set<String> = []
+    private var wakeAt: Date?
+    private var wakeToken = 0
     private var notifyScheduled = false
     private var stream: FSEventStreamRef?
+    private var observer: NSObjectProtocol?
     private let resolvedRoot: String
-    private let queue: OperationQueue = {
-        let queue = OperationQueue()
-        queue.maxConcurrentOperationCount = 4
-        queue.qualityOfService = .utility
-        return queue
-    }()
 
-    init(root: String, visibility: Visibility, latency: TimeInterval = 0.3) {
+    init(root: String, visibility: Visibility, latency: TimeInterval = 0.3, cache: FolderCountCache? = nil) {
         self.root = root
         self.visibility = visibility
+        self.cache = cache ?? .shared
         resolvedRoot = realpath(root, nil).map { pointer in
             defer { free(pointer) }
             return String(cString: pointer)
         } ?? root
+        observer = NotificationCenter.default.addObserver(forName: .folderCountsChanged, object: self.cache, queue: .main) { [weak self] notification in
+            MainActor.assumeIsolated { self?.counted(notification) }
+        }
         startStream(latency: latency)
     }
 
     deinit {
-        queue.cancelAllOperations()
+        if let observer { NotificationCenter.default.removeObserver(observer) }
         if let stream {
             FSEventStreamStop(stream)
             FSEventStreamInvalidate(stream)
@@ -46,49 +48,82 @@ final class FolderCounter {
     }
 
     func count(for path: String) -> Int? {
-        if let count = counts[path] { return count < 0 ? nil : count }
-        guard pending.insert(path).inserted else { return nil }
-        let token = generation
-        let visibility = visibility
-        queue.addOperation { [weak self] in
-            let count = (try? DirectoryReader.count(path, visibility: visibility)) ?? -1
-            DispatchQueue.main.async {
-                guard let self, token == self.generation else { return }
-                self.pending.remove(path)
-                self.counts[path] = count
-                self.scheduleNotify()
-            }
+        guard let entry = cache.entry(for: path, visibility: visibility) else {
+            cache.recount(path, visibility: visibility)
+            return nil
         }
-        return nil
+        refreshIfNeeded(path, entry: entry)
+        return entry.count < 0 ? nil : entry.count
     }
 
     var knownCounts: [String: Int] {
-        counts.filter { $0.value >= 0 }
+        cache.knownCounts(for: visibility)
     }
 
     func isCounting(_ path: String) -> Bool {
-        pending.contains(path)
+        cache.isCounting(path, visibility: visibility)
     }
 
     func invalidate(_ path: String) {
         let path = path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
-        guard counts.removeValue(forKey: path) != nil else { return }
-        scheduleNotify()
+        cache.markStale(path)
+        if let entry = cache.entry(for: path, visibility: visibility) {
+            refreshIfNeeded(path, entry: entry)
+        }
     }
 
     func invalidateAll(under path: String) {
-        let prefix = path.hasSuffix("/") ? path : path + "/"
-        let before = counts.count
-        counts = counts.filter { $0.key != path && !$0.key.hasPrefix(prefix) }
-        if counts.count != before { scheduleNotify() }
+        for marked in cache.markStale(under: path) {
+            if let entry = cache.entry(for: marked, visibility: visibility) {
+                refreshIfNeeded(marked, entry: entry)
+            }
+        }
     }
 
-    private func reset() {
-        generation += 1
-        queue.cancelAllOperations()
-        counts = [:]
-        pending = []
-        scheduleNotify()
+    private func refreshIfNeeded(_ path: String, entry: FolderCountCache.Entry) {
+        guard entry.stale || entry.countedAt < startedAt else { return }
+        let due = entry.countedAt.addingTimeInterval(cache.refreshInterval)
+        if due <= Date() {
+            waiting.remove(path)
+            cache.recount(path, visibility: visibility)
+        } else {
+            waiting.insert(path)
+            scheduleWake(at: due)
+        }
+    }
+
+    private func scheduleWake(at date: Date) {
+        if let wakeAt, wakeAt <= date { return }
+        wakeAt = date
+        wakeToken += 1
+        let token = wakeToken
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(date.timeIntervalSinceNow, 0)) { [weak self] in
+            guard let self, token == self.wakeToken else { return }
+            self.wakeAt = nil
+            self.wake()
+        }
+    }
+
+    private func wake() {
+        let paths = waiting
+        waiting = []
+        for path in paths {
+            if let entry = cache.entry(for: path, visibility: visibility) {
+                refreshIfNeeded(path, entry: entry)
+            } else {
+                cache.recount(path, visibility: visibility)
+            }
+        }
+    }
+
+    private func counted(_ notification: Notification) {
+        guard let path = notification.userInfo?["path"] as? String, notification.userInfo?["visibility"] as? Visibility == visibility, path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/") else { return }
+        if let entry = cache.entry(for: path, visibility: visibility), entry.stale {
+            refreshIfNeeded(path, entry: entry)
+        }
+        if notification.userInfo?["changed"] as? Bool == true {
+            scheduleNotify()
+        }
     }
 
     private func scheduleNotify() {
