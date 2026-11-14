@@ -29,7 +29,7 @@
     "size": "s-1vcpu-2gb"
   },
   "apps": {
-    "build": "0.11.2",
+    "build": "0.11.3",
     "homebrew": {
       "desc": "Fast, simple file manager with list, icon, and column views",
       "macos": "golden_gate",
@@ -60,7 +60,7 @@
       },
       "android": {}
     },
-    "version": "0.11.2",
-    "whatsNew": "The Count column now remembers folder counts, so revisited folders show and sort by their counts right away, even after relaunching Cubby."
+    "version": "0.11.3",
+    "whatsNew": "Folder counts now refresh as soon as you open or return to a folder, so they reflect files you just moved."
   }
 }
