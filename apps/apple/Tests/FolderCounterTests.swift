@@ -121,7 +121,7 @@ final class FolderCounterTests: XCTestCase {
         let directory = makeTemporaryDirectory()
         let folder = makeFolder(directory, "Folder")
         makeFile(folder, "a.txt")
-        let cache = FolderCountCache(refreshInterval: 0.3)
+        let cache = FolderCountCache(refreshInterval: 60)
         let first = FolderCounter(root: directory.path, visibility: .standard, cache: cache)
         _ = first.count(for: folder.path)
         waitForChange(first) { first.count(for: folder.path) == 1 }
@@ -130,8 +130,13 @@ final class FolderCounterTests: XCTestCase {
         let second = FolderCounter(root: directory.path, visibility: .standard, cache: cache)
         XCTAssertEqual(second.count(for: folder.path), 1)
         XCTAssertEqual(second.knownCounts, [folder.path: 1])
-        XCTAssertFalse(second.isCounting(folder.path))
+        XCTAssertTrue(second.isCounting(folder.path))
         waitForChange(second) { second.count(for: folder.path) == 2 }
+
+        makeFile(folder, "c.txt")
+        second.invalidate(folder.path)
+        XCTAssertEqual(second.count(for: folder.path), 2)
+        XCTAssertFalse(second.isCounting(folder.path))
     }
 
     func testUnchangedRecountDoesNotNotify() {
