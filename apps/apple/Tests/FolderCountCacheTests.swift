@@ -106,4 +106,65 @@ final class FolderCountCacheTests: XCTestCase {
         _ = recount(cache, folder.path)
         XCTAssertTrue(cache.entry(for: folder.path, visibility: .standard)!.stale)
     }
+
+    func testPersistsCountsAcrossLaunches() {
+        let directory = makeTemporaryDirectory()
+        let folder = makeFolder(directory, "Folder")
+        makeFile(folder, "a.txt")
+        let missing = directory.appending(path: "missing").path
+        let hidden = Visibility(showHidden: true, showDSStore: false)
+        let url = makeTemporaryDirectory().appending(path: "config/counts.json")
+        let cache = FolderCountCache(url: url)
+        _ = recount(cache, folder.path)
+        _ = recount(cache, folder.path, visibility: hidden)
+        _ = recount(cache, missing)
+        cache.markStale(folder.path)
+        let countedAt = cache.entry(for: folder.path, visibility: .standard)!.countedAt
+        cache.flush()
+
+        let restored = FolderCountCache(url: url)
+        XCTAssertEqual(restored.entry(for: folder.path, visibility: .standard), FolderCountCache.Entry(count: 1, countedAt: countedAt))
+        XCTAssertEqual(restored.knownCounts(for: .standard), [folder.path: 1])
+        XCTAssertEqual(restored.knownCounts(for: hidden), [folder.path: 1])
+        XCTAssertNil(restored.entry(for: missing, visibility: .standard))
+    }
+
+    func testDropsExpiredCountsAndCapsSavedCounts() throws {
+        let url = makeTemporaryDirectory().appending(path: "counts.json")
+        let now = Date()
+        var lines: [String] = []
+        for index in 0..<(FolderCountCache.limit + 1) {
+            lines.append(#"{"count":1,"countedAt":\#(now.addingTimeInterval(-Double(index)).timeIntervalSinceReferenceDate),"path":"/f\#(index)","showDSStore":false,"showHidden":false}"#)
+        }
+        lines.append(#"{"count":1,"countedAt":\#(now.addingTimeInterval(-FolderCountCache.retention - 60).timeIntervalSinceReferenceDate),"path":"/old","showDSStore":false,"showHidden":false}"#)
+        try Data(#"{"counts":[\#(lines.joined(separator: ","))]}"#.utf8).write(to: url)
+
+        let cache = FolderCountCache(url: url)
+        XCTAssertNil(cache.entry(for: "/old", visibility: .standard))
+        XCTAssertEqual(cache.knownCounts(for: .standard).count, FolderCountCache.limit + 1)
+        cache.flush()
+
+        let restored = FolderCountCache(url: url)
+        XCTAssertEqual(restored.knownCounts(for: .standard).count, FolderCountCache.limit)
+        XCTAssertNotNil(restored.entry(for: "/f0", visibility: .standard))
+        XCTAssertNil(restored.entry(for: "/f\(FolderCountCache.limit)", visibility: .standard))
+    }
+
+    func testSavesAfterCountsChange() {
+        let directory = makeTemporaryDirectory()
+        let folder = makeFolder(directory, "Folder")
+        let url = makeTemporaryDirectory().appending(path: "counts.json")
+        let cache = FolderCountCache(url: url, saveDelay: 0.1)
+        _ = recount(cache, folder.path)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        let saved = expectation(for: NSPredicate { _, _ in FileManager.default.fileExists(atPath: url.path) }, evaluatedWith: nil)
+        wait(for: [saved], timeout: 5)
+        XCTAssertEqual(FolderCountCache(url: url).knownCounts(for: .standard), [folder.path: 0])
+    }
+
+    func testIgnoresUnreadableFile() throws {
+        let url = makeTemporaryDirectory().appending(path: "counts.json")
+        try Data("not json".utf8).write(to: url)
+        XCTAssertEqual(FolderCountCache(url: url).knownCounts(for: .standard), [:])
+    }
 }

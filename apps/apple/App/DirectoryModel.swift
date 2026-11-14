@@ -31,7 +31,8 @@ final class DirectoryModel {
     private(set) var counter: FolderCounter?
     private var stopped = false
     private let changes: PendingChanges
-    private let countCache: FolderCountCache
+    private let injectedCountCache: FolderCountCache?
+    private lazy var countCache = injectedCountCache ?? .shared
     private var pending: PendingSnapshot
     private var changesObserver: NSObjectProtocol?
     private static let queue = DispatchQueue(label: "cubby.directory", qos: .userInitiated, attributes: .concurrent)
@@ -43,7 +44,7 @@ final class DirectoryModel {
         self.visibility = visibility
         self.changes = changes ?? .shared
         pending = self.changes.snapshot
-        self.countCache = countCache ?? .shared
+        injectedCountCache = countCache
     }
 
     func start() {

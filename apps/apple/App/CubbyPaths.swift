@@ -29,5 +29,6 @@ struct CubbyPaths {
     var folderViewsFile: URL { configDirectory.appending(path: "folders.json") }
     var sessionFile: URL { configDirectory.appending(path: "session.json") }
     var historyFile: URL { configDirectory.appending(path: "history.json") }
+    var countsFile: URL { configDirectory.appending(path: "counts.json") }
     var themesDirectory: URL { configDirectory.appending(path: "themes", directoryHint: .isDirectory) }
 }
