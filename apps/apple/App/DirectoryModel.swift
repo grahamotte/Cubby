@@ -31,17 +31,19 @@ final class DirectoryModel {
     private(set) var counter: FolderCounter?
     private var stopped = false
     private let changes: PendingChanges
+    private let countCache: FolderCountCache
     private var pending: PendingSnapshot
     private var changesObserver: NSObjectProtocol?
     private static let queue = DispatchQueue(label: "cubby.directory", qos: .userInitiated, attributes: .concurrent)
 
-    init(path: String, view: FolderView, visibility: Visibility, changes: PendingChanges? = nil) {
+    init(path: String, view: FolderView, visibility: Visibility, changes: PendingChanges? = nil, countCache: FolderCountCache? = nil) {
         self.path = path
         sort = view.sort
         ascending = view.ascending
         self.visibility = visibility
         self.changes = changes ?? .shared
         pending = self.changes.snapshot
+        self.countCache = countCache ?? .shared
     }
 
     func start() {
@@ -127,8 +129,7 @@ final class DirectoryModel {
 
     private var knownCounts: [String: Int] {
         guard sort == .count else { return [:] }
-        counter?.visibility = visibility
-        return counter?.knownCounts ?? [:]
+        return countCache.knownCounts(for: visibility)
     }
 
     private func countSnapshot(_ items: [FileItem]) -> [String: Int] {
@@ -138,7 +139,7 @@ final class DirectoryModel {
 
     private func requestCounts(_ items: [FileItem]) {
         guard sort == .count, !stopped else { return }
-        let counter = counter ?? FolderCounter(root: path, visibility: visibility)
+        let counter = counter ?? FolderCounter(root: path, visibility: visibility, cache: countCache)
         if self.counter == nil {
             counter.onChange = { [weak self] in self?.scheduleCountSort() }
             self.counter = counter

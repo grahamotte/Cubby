@@ -55,6 +55,7 @@ let package = Package(
                 "FileNaming.swift",
                 "FileOperations.swift",
                 "FileSorter.swift",
+                "FolderCountCache.swift",
                 "FolderCounter.swift",
                 "FolderView.swift",
                 "FolderViewStore.swift",
